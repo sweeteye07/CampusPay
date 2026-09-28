@@ -29,6 +29,13 @@ public class MainActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
+        if (mAuth.getCurrentUser() != null) {
+            Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+}
+
         btnLogin.setOnClickListener(v -> {
 
             String email = etEmail.getText().toString().trim();
@@ -47,11 +54,9 @@ public class MainActivity extends AppCompatActivity {
                     .addOnCompleteListener(this, task -> {
 
                         if (task.isSuccessful()) {
-                            Toast.makeText(
-                                    this,
-                                    "Login successful",
-                                    Toast.LENGTH_SHORT
-                            ).show();
+                            Intent intent = new Intent(MainActivity.this, DashboardActivity.class);
+                            startActivity(intent);
+                            finish();
 
                         } else {
                             Toast.makeText(
