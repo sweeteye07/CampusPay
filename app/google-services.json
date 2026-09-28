@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "309453170801",
+    "project_id": "campuspay-29c8a",
+    "storage_bucket": "campuspay-29c8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:309453170801:android:89c7126960a72aa57ad3d0",
+        "android_client_info": {
+          "package_name": "com.example.campuspay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTpIOWe0pCXJuRtclj93i23uQTtj-5hFQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

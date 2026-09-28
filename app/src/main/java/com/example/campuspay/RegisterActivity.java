@@ -1,35 +1,32 @@
 package com.example.campuspay;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
 
-public class MainActivity extends AppCompatActivity {
+public class RegisterActivity extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
-    private Button btnLogin;
+    private Button btnCreateAccount;
     private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_register);
 
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        btnLogin = findViewById(R.id.btnLogin);
+        etEmail = findViewById(R.id.etRegisterEmail);
+        etPassword = findViewById(R.id.etRegisterPassword);
+        btnCreateAccount = findViewById(R.id.btnCreateAccount);
 
         mAuth = FirebaseAuth.getInstance();
 
-        btnLogin.setOnClickListener(v -> {
+        btnCreateAccount.setOnClickListener(v -> {
 
             String email = etEmail.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
@@ -43,32 +40,27 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            mAuth.signInWithEmailAndPassword(email, password)
+            mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, task -> {
 
                         if (task.isSuccessful()) {
                             Toast.makeText(
                                     this,
-                                    "Login successful",
+                                    "Account created successfully",
                                     Toast.LENGTH_SHORT
                             ).show();
+
+                            finish();
 
                         } else {
                             Toast.makeText(
                                     this,
-                                    "Login failed: "
+                                    "Registration failed: "
                                             + task.getException().getMessage(),
                                     Toast.LENGTH_LONG
                             ).show();
                         }
                     });
-        });
-
-        Button btnRegister = findViewById(R.id.btnRegister);
-
-        btnRegister.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, RegisterActivity.class);
-            startActivity(intent);
         });
     }
 }
