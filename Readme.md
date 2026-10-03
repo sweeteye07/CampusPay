@@ -366,7 +366,9 @@ CampusPay/
 │   │       │   ├── EventsActivity.java
 │   │       │   ├── MyEventsActivity.java
 │   │       │   ├── ScanQRActivity.java
-│   │       │   └── EventQRActivity.java
+│   │       │   ├── EventQRActivity.java
+│   │       │   ├── Event.java
+│   │       │   └── EventAdapter.java
 │   │       │
 │   │       ├── res/
 │   │       │   └── layout/
@@ -375,7 +377,8 @@ CampusPay/
 │   │       │       ├── activity_dashboard.xml
 │   │       │       ├── activity_events.xml
 │   │       │       ├── activity_my_events.xml
-│   │       │       └── activity_event_qr.xml
+│   │       │       ├── activity_event_qr.xml
+│   │       │       └── item_event.xml
 │   │       │
 │   │       └── AndroidManifest.xml
 │   │
