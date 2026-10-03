@@ -20,6 +20,9 @@ public class RegisterActivity extends AppCompatActivity {
     private EditText etName, etEmail, etPassword;
     private Button btnCreateAccount;
 
+    private com.google.android.material.textfield.TextInputLayout
+            tilName, tilEmail, tilPassword;
+
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
@@ -32,6 +35,10 @@ public class RegisterActivity extends AppCompatActivity {
         etEmail = findViewById(R.id.etRegisterEmail);
         etPassword = findViewById(R.id.etRegisterPassword);
         btnCreateAccount = findViewById(R.id.btnCreateAccount);
+
+        tilName = findViewById(R.id.tilRegisterName);
+        tilEmail = findViewById(R.id.tilRegisterEmail);
+        tilPassword = findViewById(R.id.tilRegisterPassword);
 
         com.google.android.material.appbar.MaterialToolbar toolbar =
                 findViewById(R.id.toolbarRegister);
@@ -47,44 +54,48 @@ public class RegisterActivity extends AppCompatActivity {
             String email = etEmail.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
 
+            tilName.setError(null);
+            tilEmail.setError(null);
+            tilPassword.setError(null);
+
             // Name checks
-        if (name.isEmpty()) {
-            etName.setError("Name is required");
-            etName.requestFocus();
-            return;
-        }
+            if (name.isEmpty()) {
+                tilName.setError("Name is required");
+                etName.requestFocus();
+                return;
+            }
 
-        if (name.length() < 2) {
-            etName.setError("Name is too short");
-            etName.requestFocus();
-            return;
-        }
+            if (name.length() < 2) {
+                tilName.setError("Name is too short");
+                etName.requestFocus();
+                return;
+            }
 
-        // Email checks
-        if (email.isEmpty()) {
-            etEmail.setError("Email is required");
-            etEmail.requestFocus();
-            return;
-        }
+            // Email checks
+            if (email.isEmpty()) {
+                tilEmail.setError("Email is required");
+                etEmail.requestFocus();
+                return;
+            }
 
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            etEmail.setError("Enter a valid email address");
-            etEmail.requestFocus();
-            return;
-        }
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                tilEmail.setError("Enter a valid email address");
+                etEmail.requestFocus();
+                return;
+            }
 
-        // Password checks
-        if (password.isEmpty()) {
-            etPassword.setError("Password is required");
-            etPassword.requestFocus();
-            return;
-        }
+            // Password checks
+            if (password.isEmpty()) {
+                tilPassword.setError("Password is required");
+                etPassword.requestFocus();
+                return;
+            }
 
-        if (password.length() < 6) {
-            etPassword.setError("Password must be at least 6 characters");
-            etPassword.requestFocus();
-            return;
-        }
+            if (password.length() < 6) {
+                tilPassword.setError("Password must be at least 6 characters");
+                etPassword.requestFocus();
+                return;
+            }
 
             mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, task -> {
