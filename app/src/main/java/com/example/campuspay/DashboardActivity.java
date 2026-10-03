@@ -2,10 +2,11 @@ package com.example.campuspay;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.button.MaterialButton;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -33,13 +34,13 @@ public class DashboardActivity extends AppCompatActivity {
         tvWelcome = findViewById(R.id.tvWelcome);
         tvBalance = findViewById(R.id.tvBalance);
 
-        Button btnLogout = findViewById(R.id.btnLogout);
+        MaterialButton btnLogout = findViewById(R.id.btnLogout);
 
-        Button btnEvents = findViewById(R.id.btnEvents);
+        MaterialButton btnEvents = findViewById(R.id.btnEvents);
 
-        Button btnMyEvents = findViewById(R.id.btnMyEvents);
+        MaterialButton btnMyEvents = findViewById(R.id.btnMyEvents);
 
-        Button btnScanQR = findViewById(R.id.btnScanQR);
+        MaterialButton btnScanQR = findViewById(R.id.btnScanQR);
 
         btnScanQR.setOnClickListener(v -> {
             Intent intent = new Intent(

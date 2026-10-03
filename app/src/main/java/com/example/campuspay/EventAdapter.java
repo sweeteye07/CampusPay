@@ -3,7 +3,6 @@ package com.example.campuspay;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -52,9 +51,9 @@ public class EventAdapter
         holder.tvTitle.setText(event.getTitle());
         holder.tvDescription.setText(event.getDescription());
         holder.tvCredits.setText(
-                "Earn " + event.getCredits() + " Credits"
+                "+" + event.getCredits() + " pts"
         );
-        holder.tvDate.setText("Date: " + event.getDate());
+        holder.tvDate.setText(event.getDate());
 
         if (event.isRegistered()) {
             holder.btnRegister.setText("Registered");
@@ -84,8 +83,8 @@ public class EventAdapter
         final TextView tvDescription;
         final TextView tvCredits;
         final TextView tvDate;
-        final Button btnRegister;
-        final Button btnShowQR;
+        final com.google.android.material.button.MaterialButton btnRegister;
+        final com.google.android.material.button.MaterialButton btnShowQR;
 
         EventViewHolder(@NonNull View itemView) {
             super(itemView);
