@@ -6,8 +6,11 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
@@ -149,20 +152,34 @@ public class ScanQRActivity extends AppCompatActivity {
             String rewardId
     ) {
 
-        db.collection("events")
-                .document(eventId)
-                .get()
-                .addOnSuccessListener(eventDocument -> {
+        DocumentReference attendanceRef =
+                db.collection("attendance").document(rewardId);
+
+        DocumentReference eventRef =
+                db.collection("events").document(eventId);
+        DocumentReference userRef =
+                db.collection("users").document(userId);
+
+        db.runTransaction(transaction -> {
+
+                    DocumentSnapshot attendanceSnapshot =
+                            transaction.get(attendanceRef);
+
+                    if (attendanceSnapshot.exists()) {
+                        throw new FirebaseFirestoreException(
+                                "Reward already claimed for this event",
+                                FirebaseFirestoreException.Code.ABORTED
+                        );
+                    }
+
+                    DocumentSnapshot eventDocument =
+                            transaction.get(eventRef);
 
                     if (!eventDocument.exists()) {
-
-                        Toast.makeText(
-                                this,
+                        throw new FirebaseFirestoreException(
                                 "Event not found",
-                                Toast.LENGTH_LONG
-                        ).show();
-
-                        return;
+                                FirebaseFirestoreException.Code.NOT_FOUND
+                        );
                     }
 
                     Long credits =
@@ -172,67 +189,68 @@ public class ScanQRActivity extends AppCompatActivity {
                             eventDocument.getString("title");
 
                     if (credits == null) {
-                        Toast.makeText(
-                                this,
+                        throw new FirebaseFirestoreException(
                                 "Event reward not configured",
-                                Toast.LENGTH_LONG
-                        ).show();
-
-                        return;
+                                FirebaseFirestoreException.Code
+                                        .FAILED_PRECONDITION
+                        );
                     }
 
-                    db.collection("users")
-                            .document(userId)
-                            .update(
-                                    "credits",
-                                    FieldValue.increment(credits)
-                            )
-                            .addOnSuccessListener(unused -> {
+                    DocumentSnapshot userSnapshot =
+                            transaction.get(userRef);
 
-                                saveAttendance(
-                                        rewardId,
-                                        userId,
-                                        eventId,
-                                        eventTitle,
-                                        credits
-                                );
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(
-                                            this,
-                                            "Failed to award credits: "
-                                                    + e.getMessage(),
-                                            Toast.LENGTH_LONG
-                                    ).show()
-                            );
-                });
-    }
+                    if (!userSnapshot.exists()) {
+                        throw new FirebaseFirestoreException(
+                                "Student profile not found",
+                                FirebaseFirestoreException.Code.NOT_FOUND
+                        );
+                    }
 
-    private void saveAttendance(
-            String rewardId,
-            String userId,
-            String eventId,
-            String eventTitle,
-            Long credits
-    ) {
+                    java.util.Map<String, Object> attendance =
+                            new java.util.HashMap<>();
 
-        java.util.Map<String, Object> attendance =
-                new java.util.HashMap<>();
+                    attendance.put("userId", userId);
+                    attendance.put("eventId", eventId);
+                    attendance.put("eventTitle", eventTitle);
+                    attendance.put("creditsAwarded", credits);
+                    attendance.put(
+                            "attendedAt",
+                            FieldValue.serverTimestamp()
+                    );
 
-        attendance.put("userId", userId);
-        attendance.put("eventId", eventId);
-        attendance.put("eventTitle", eventTitle);
-        attendance.put("creditsAwarded", credits);
-        attendance.put(
-                "attendedAt",
-                FieldValue.serverTimestamp()
-        );
+                    transaction.set(attendanceRef, attendance);
+                    transaction.update(
+                            userRef,
+                            "credits",
+                            FieldValue.increment(credits)
+                    );
 
-        db.collection("attendance")
-                .document(rewardId)
-                .set(attendance)
-                .addOnSuccessListener(unused -> {
+                    DocumentReference ledgerRef =
+                            db.collection("transactions").document();
 
+                    java.util.Map<String, Object> ledger =
+                            new java.util.HashMap<>();
+
+                    ledger.put("type", "earn");
+                    ledger.put("userId", userId);
+                    ledger.put("eventId", eventId);
+                    ledger.put("eventTitle", eventTitle);
+                    ledger.put("credits", credits);
+                    ledger.put(
+                            "description",
+                            "Earned " + credits
+                                    + " credits for " + eventTitle
+                    );
+                    ledger.put(
+                            "createdAt",
+                            FieldValue.serverTimestamp()
+                    );
+
+                    transaction.set(ledgerRef, ledger);
+
+                    return credits;
+                })
+                .addOnSuccessListener(credits -> {
                     Toast.makeText(
                             this,
                             "Attendance verified! "
@@ -243,13 +261,14 @@ public class ScanQRActivity extends AppCompatActivity {
 
                     finish();
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "Attendance record failed: "
-                                        + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
+                .addOnFailureListener(e -> {
+                    Toast.makeText(
+                            this,
+                            "Credit failed: " + e.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show();
+
+                    finish();
+                });
     }
 }
