@@ -10,6 +10,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+
+
 public class DashboardActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
@@ -17,6 +19,8 @@ public class DashboardActivity extends AppCompatActivity {
 
     private TextView tvWelcome;
     private TextView tvBalance;
+
+    private com.google.firebase.firestore.ListenerRegistration userListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +65,7 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        loadStudentData();
+        startListeningToStudentData();
 
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
@@ -76,28 +80,41 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
-    private void loadStudentData() {
+    private void startListeningToStudentData() {
 
-        String userId = mAuth.getCurrentUser().getUid();
+    String userId = mAuth.getCurrentUser().getUid();
 
-        db.collection("users")
-                .document(userId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
+    userListener = db.collection("users")
+            .document(userId)
+            .addSnapshotListener((documentSnapshot, error) -> {
 
-                    if (documentSnapshot.exists()) {
+                if (error != null) {
+                    // Listener failed (e.g. lost permission) — fail quietly
+                    return;
+                }
 
-                        String name = documentSnapshot.getString("name");
-                        Long credits = documentSnapshot.getLong("credits");
+                if (documentSnapshot != null && documentSnapshot.exists()) {
 
-                        if (name != null) {
-                            tvWelcome.setText("Welcome, " + name);
-                        }
+                    String name = documentSnapshot.getString("name");
+                    Long credits = documentSnapshot.getLong("credits");
 
-                        if (credits != null) {
-                            tvBalance.setText(credits + " Credits");
-                        }
+                    if (name != null) {
+                        tvWelcome.setText("Welcome, " + name);
                     }
-                });
-    }
+
+                    tvBalance.setText(
+                            credits != null ? credits + " Credits" : "0 Credits"
+                    );
+                }
+            });
+}
+
+            @Override
+            protected void onStop() {
+                super.onStop();
+                if (userListener != null) {
+                    userListener.remove();
+                    userListener = null;
+                }
+            }
 }
