@@ -69,17 +69,6 @@
         app:layout_constraintTop_toBottomOf="@id/btnMyEvents" />
 
     <Button
-        android:id="@+id/btnTransactions"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Transactions"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnScanQR" />
-
-    <Button
         android:id="@+id/btnLogout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -87,6 +76,6 @@
         android:text="Logout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnTransactions" />
+        app:layout_constraintTop_toBottomOf="@id/btnScanQR" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
