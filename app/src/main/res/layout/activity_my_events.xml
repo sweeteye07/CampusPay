@@ -7,15 +7,15 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/tvMyEventsTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="My Events"
-        android:textSize="28sp"
-        android:textStyle="bold"
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarMyEvents"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="My Events" />
 
     <TextView
         android:id="@+id/tvMyEvents"
@@ -26,6 +26,6 @@
         android:textSize="18sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvMyEventsTitle" />
+        app:layout_constraintTop_toBottomOf="@id/toolbarMyEvents" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -33,6 +33,11 @@ public class RegisterActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etRegisterPassword);
         btnCreateAccount = findViewById(R.id.btnCreateAccount);
 
+        com.google.android.material.appbar.MaterialToolbar toolbar =
+                findViewById(R.id.toolbarRegister);
+
+        toolbar.setNavigationOnClickListener(v -> finish());
+
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 

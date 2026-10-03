@@ -3,7 +3,6 @@ package com.example.campuspay;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,7 +15,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 public class EventQRActivity extends AppCompatActivity {
 
     private ImageView ivEventQR;
-    private TextView tvEventTitle;
+    private com.google.android.material.appbar.MaterialToolbar toolbarEventQr;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +23,9 @@ public class EventQRActivity extends AppCompatActivity {
         setContentView(R.layout.activity_event_qr);
 
         ivEventQR = findViewById(R.id.ivEventQR);
-        tvEventTitle = findViewById(R.id.tvEventTitle);
+        toolbarEventQr = findViewById(R.id.toolbarEventQr);
+
+        toolbarEventQr.setNavigationOnClickListener(v -> finish());
 
         String eventId = getIntent().getStringExtra("eventId");
         String eventTitle = getIntent().getStringExtra("eventTitle");
@@ -39,7 +40,7 @@ public class EventQRActivity extends AppCompatActivity {
             return;
         }
 
-        tvEventTitle.setText(eventTitle);
+        toolbarEventQr.setTitle(eventTitle);
 
         String qrData = "CAMPUSPAY_EVENT:" + eventId;
 

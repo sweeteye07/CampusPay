@@ -34,6 +34,11 @@ public class EventsActivity extends AppCompatActivity {
 
         eventsContainer = findViewById(R.id.eventsContainer);
 
+        com.google.android.material.appbar.MaterialToolbar toolbar =
+                findViewById(R.id.toolbarEvents);
+
+        toolbar.setNavigationOnClickListener(v -> finish());
+
         loadEvents();
     }
 

@@ -7,17 +7,15 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/tvEventTitle"
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarEventQr"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Event"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
+        android:layout_height="?attr/actionBarSize"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Event QR" />
 
     <ImageView
         android:id="@+id/ivEventQR"
@@ -28,7 +26,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvEventTitle"
+        app:layout_constraintTop_toBottomOf="@id/toolbarEventQr"
         app:layout_constraintDimensionRatio="1:1" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

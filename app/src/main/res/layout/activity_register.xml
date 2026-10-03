@@ -8,18 +8,15 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/tvRegisterTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Create CampusPay Account"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@id/etRegisterName"
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarRegister"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Create Account" />
 
     <EditText
         android:id="@+id/etRegisterName"
@@ -30,7 +27,7 @@
         android:inputType="textPersonName"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvRegisterTitle" />
+        app:layout_constraintTop_toBottomOf="@id/toolbarRegister" />
 
     <EditText
         android:id="@+id/etRegisterEmail"

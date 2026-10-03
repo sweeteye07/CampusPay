@@ -7,15 +7,15 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <TextView
-        android:id="@+id/tvEventsTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Campus Events"
-        android:textSize="28sp"
-        android:textStyle="bold"
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarEvents"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Campus Events" />
 
     <LinearLayout
         android:id="@+id/eventsContainer"
@@ -25,6 +25,6 @@
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvEventsTitle" />
+        app:layout_constraintTop_toBottomOf="@id/toolbarEvents" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
