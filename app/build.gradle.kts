@@ -36,6 +36,7 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)
+    implementation(libs.recyclerview)
 
 
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
