@@ -13,6 +13,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.util.Patterns;
+
 public class RegisterActivity extends AppCompatActivity {
 
     private EditText etName, etEmail, etPassword;
@@ -40,14 +42,44 @@ public class RegisterActivity extends AppCompatActivity {
             String email = etEmail.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
 
-            if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(
-                        this,
-                        "Please fill all fields",
-                        Toast.LENGTH_SHORT
-                ).show();
-                return;
-            }
+            // Name checks
+        if (name.isEmpty()) {
+            etName.setError("Name is required");
+            etName.requestFocus();
+            return;
+        }
+
+        if (name.length() < 2) {
+            etName.setError("Name is too short");
+            etName.requestFocus();
+            return;
+        }
+
+        // Email checks
+        if (email.isEmpty()) {
+            etEmail.setError("Email is required");
+            etEmail.requestFocus();
+            return;
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.setError("Enter a valid email address");
+            etEmail.requestFocus();
+            return;
+        }
+
+        // Password checks
+        if (password.isEmpty()) {
+            etPassword.setError("Password is required");
+            etPassword.requestFocus();
+            return;
+        }
+
+        if (password.length() < 6) {
+            etPassword.setError("Password must be at least 6 characters");
+            etPassword.requestFocus();
+            return;
+        }
 
             mAuth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, task -> {
