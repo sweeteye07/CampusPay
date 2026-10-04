@@ -27,8 +27,6 @@ import java.util.Map;
  */
 public class ScanQRActivity extends AppCompatActivity {
 
-    private static final String STUDENT_QR_PREFIX = "CAMPUSPAY_STUDENT:";
-
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
 
@@ -189,14 +187,14 @@ public class ScanQRActivity extends AppCompatActivity {
 
     private void handleScan(String qrData) {
 
-        if (!qrData.startsWith(STUDENT_QR_PREFIX)) {
+        if (!QrPayload.isStudentPayload(qrData)) {
             showMessage("Not a CampusPay student QR.");
             return;
         }
 
-        String studentId = qrData.substring(STUDENT_QR_PREFIX.length());
+        String studentId = QrPayload.userIdFrom(qrData);
 
-        if (!studentId.matches("[A-Za-z0-9]{1,128}")) {
+        if (!QrPayload.isValidUserId(studentId)) {
             showMessage("Not a valid student QR.");
             return;
         }

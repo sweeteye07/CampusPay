@@ -410,7 +410,8 @@ CampusPay/
 │   │       │   ├── MyEventAdapter.java
 │   │       │   ├── CreditTransaction.java
 │   │       │   ├── HistoryAdapter.java
-│   │       │   └── UserRole.java
+│   │       │   ├── UserRole.java
+│   │       │   └── QrPayload.java
 │   │       │
 │   │       ├── res/
 │   │       │   └── layout/
@@ -487,6 +488,12 @@ From the project root:
 The generated APK will be located under:
 
 app/build/outputs/apk/debug/
+
+Running the Unit Tests
+
+The role check (UserRole) and the QR payload parsing (QrPayload) are plain Java classes covered by JVM unit tests:
+
+.\gradlew.bat testDebugUnitTest
 
 Installing on an Emulator
 

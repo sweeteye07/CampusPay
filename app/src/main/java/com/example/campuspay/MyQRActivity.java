@@ -52,7 +52,7 @@ public class MyQRActivity extends AppCompatActivity {
             return;
         }
 
-        generateQRCode("CAMPUSPAY_STUDENT:" + user.getUid());
+        generateQRCode(QrPayload.STUDENT_PREFIX + user.getUid());
 
         FirebaseFirestore.getInstance()
                 .collection("users")
