@@ -52,7 +52,7 @@ public class RegisterActivity extends AppCompatActivity {
 
             String name = etName.getText().toString().trim();
             String email = etEmail.getText().toString().trim().toLowerCase();
-            String password = etPassword.getText().toString().trim();
+            String password = etPassword.getText().toString();
 
             tilName.setError(null);
             tilEmail.setError(null);

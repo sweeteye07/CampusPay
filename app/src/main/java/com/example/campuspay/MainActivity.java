@@ -39,7 +39,10 @@ public class MainActivity extends AppCompatActivity {
         btnLogin.setOnClickListener(v -> {
 
             String email = etEmail.getText().toString().trim();
-            String password = etPassword.getText().toString().trim();
+
+            // Passwords are used exactly as typed: trimming them would
+            // silently change the credential the account was created with
+            String password = etPassword.getText().toString();
 
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(

@@ -98,6 +98,13 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
+        // The Firestore rules cap event rewards at 10000 credits
+        if (credits > 10000) {
+            tilCredits.setError("Credits cannot be more than 10000");
+            etCredits.requestFocus();
+            return;
+        }
+
         if (date.isEmpty()) {
             tilDate.setError("Date is required");
             etDate.requestFocus();
