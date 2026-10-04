@@ -51,7 +51,31 @@ public class MyEventsActivity extends AppCompatActivity {
         adapter = new MyEventAdapter(items);
         recyclerView.setAdapter(adapter);
 
-        loadMyEvents();
+        resolveRoleThenLoad();
+    }
+
+    /** My Events is students-only. */
+    private void resolveRoleThenLoad() {
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        db.collection("users")
+                .document(mAuth.getCurrentUser().getUid())
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    if (UserRole.isOrganizer(userDoc.getString("role"))) {
+                        Toast.makeText(this, "My Events is for students",
+                                Toast.LENGTH_LONG).show();
+                        finish();
+                        return;
+                    }
+                    loadMyEvents();
+                })
+                .addOnFailureListener(e -> loadMyEvents());
     }
 
     private void loadMyEvents() {
