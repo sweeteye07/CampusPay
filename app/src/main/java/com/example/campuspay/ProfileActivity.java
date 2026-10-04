@@ -22,8 +22,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
  * Student profile screen.
  *
  * Shows the student's identity (avatar initials, name, email, role),
- * account details (balance) and activity stats (events registered,
- * events attended, total credits earned). The display name can be
+ * account details (balance) and the "Your Activity" section (events
+ * registered, events attended, credits earned, credits spent, current
+ * balance and attendance rate). The display name can be
  * edited here, which is allowed by the security rules for a user's
  * own document.
  */
@@ -42,11 +43,21 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView tvStatRegistered;
     private TextView tvStatAttended;
     private TextView tvStatEarned;
+    private TextView tvStatSpent;
+    private TextView tvStatBalance;
+    private TextView tvStatAttendanceRate;
+    private TextView tvAttendanceLabel;
+    private android.widget.ProgressBar pbAttendanceRate;
 
     private MaterialButton btnScanAttendance;
+    private View cardYourActivity;
 
     private String userId;
     private String currentName = "";
+    private boolean isOrganizer = false;
+
+    private int registeredCount = 0;
+    private int attendedCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +81,12 @@ public class ProfileActivity extends AppCompatActivity {
         tvStatRegistered = findViewById(R.id.tvStatRegistered);
         tvStatAttended = findViewById(R.id.tvStatAttended);
         tvStatEarned = findViewById(R.id.tvStatEarned);
+        tvStatSpent = findViewById(R.id.tvStatSpent);
+        tvStatBalance = findViewById(R.id.tvStatBalance);
+        tvStatAttendanceRate = findViewById(R.id.tvStatAttendanceRate);
+        tvAttendanceLabel = findViewById(R.id.tvAttendanceLabel);
+        pbAttendanceRate = findViewById(R.id.pbAttendanceRate);
+        cardYourActivity = findViewById(R.id.cardYourActivity);
 
         FirebaseUser user = mAuth.getCurrentUser();
 
@@ -85,6 +102,19 @@ public class ProfileActivity extends AppCompatActivity {
         findViewById(R.id.btnEditName)
                 .setOnClickListener(v -> showEditNameDialog());
 
+        findViewById(R.id.btnLogout).setOnClickListener(v -> {
+            mAuth.signOut();
+
+            Intent intent = new Intent(
+                    ProfileActivity.this,
+                    MainActivity.class
+            );
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                    | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        });
+
         // Organizers only: scan a student's QR to award attendance
         btnScanAttendance = findViewById(R.id.btnScanAttendance);
         btnScanAttendance.setOnClickListener(v ->
@@ -92,7 +122,17 @@ public class ProfileActivity extends AppCompatActivity {
                         ProfileActivity.this, ScanQRActivity.class)));
 
         loadProfile();
-        loadStats();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh after returning from events / transfers.
+        // Stats reload is triggered from renderProfile once the
+        // student role is confirmed, so organizers skip those reads.
+        if (userId != null) {
+            loadProfile();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -125,6 +165,7 @@ public class ProfileActivity extends AppCompatActivity {
         Long credits = doc.getLong("credits");
 
         boolean organizer = UserRole.isOrganizer(role);
+        isOrganizer = organizer;
 
         currentName = name != null ? name : "";
 
@@ -133,9 +174,12 @@ public class ProfileActivity extends AppCompatActivity {
         String emailText = email != null ? email : "—";
         String roleLabel = organizer ? "Organizer" : "Student";
 
-        // The scanner entry point only exists for organizers
+        // The scanner entry point only exists for organizers.
+        // Your Activity is the mirror image: students only.
         btnScanAttendance.setVisibility(
-                organizer ? View.VISIBLE : View.GONE);
+                isOrganizer ? View.VISIBLE : View.GONE);
+        cardYourActivity.setVisibility(
+                isOrganizer ? View.GONE : View.VISIBLE);
 
         tvProfileName.setText(nameText);
         tvProfileInitials.setText(initialsOf(currentName));
@@ -146,6 +190,12 @@ public class ProfileActivity extends AppCompatActivity {
         tvAccountRole.setText(roleLabel);
         tvAccountBalance.setText(
                 credits != null ? credits + " Credits" : "0 Credits");
+        tvStatBalance.setText(String.valueOf(credits != null ? credits : 0));
+
+        // Students only: organizers skip the activity reads entirely.
+        if (!isOrganizer) {
+            loadStats();
+        }
     }
 
     /** First letters of up to two words of the display name. */
@@ -170,12 +220,18 @@ public class ProfileActivity extends AppCompatActivity {
     // ------------------------------------------------------------------
     private void loadStats() {
 
+        if (isOrganizer) {
+            return;
+        }
+
         db.collection("registrations")
                 .whereEqualTo("userId", userId)
                 .get()
-                .addOnSuccessListener(snap ->
-                        tvStatRegistered.setText(
-                                String.valueOf(snap.size())))
+                .addOnSuccessListener(snap -> {
+                    registeredCount = snap.size();
+                    tvStatRegistered.setText(String.valueOf(registeredCount));
+                    renderAttendanceRate();
+                })
                 .addOnFailureListener(e ->
                         Toast.makeText(
                                 this,
@@ -195,8 +251,11 @@ public class ProfileActivity extends AppCompatActivity {
                         earned += credits != null ? credits : 0;
                     }
 
-                    tvStatAttended.setText(String.valueOf(snap.size()));
+                    attendedCount = snap.size();
+                    tvStatAttended.setText(String.valueOf(attendedCount));
                     tvStatEarned.setText(String.valueOf(earned));
+                    renderAttendanceRate();
+                    loadWalletStats();
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(
@@ -204,6 +263,47 @@ public class ProfileActivity extends AppCompatActivity {
                                 "Could not load attendance",
                                 Toast.LENGTH_SHORT
                         ).show());
+    }
+
+    /**
+     * Wallet side of Your Activity: credits earned (earn + received),
+     * credits spent (sent), derived from the same ledger as History.
+     */
+    private void loadWalletStats() {
+        db.collection("transactions")
+                .whereEqualTo("userId", userId)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    long earned = 0;
+                    long spent = 0;
+                    for (DocumentSnapshot doc : snap.getDocuments()) {
+                        CreditTransaction tx =
+                                CreditTransaction.fromDocument(doc);
+                        long credits = tx.getCredits() != null
+                                ? tx.getCredits() : 0L;
+                        if (tx.isEarn() || tx.isReceive()) {
+                            earned += credits;
+                        } else if (tx.isOutgoing()) {
+                            spent += credits;
+                        }
+                    }
+                    tvStatEarned.setText(String.valueOf(earned));
+                    tvStatSpent.setText(String.valueOf(spent));
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(
+                                this,
+                                "Could not load wallet stats",
+                                Toast.LENGTH_SHORT
+                        ).show());
+    }
+
+    private void renderAttendanceRate() {
+        int rate = ActivityStats.attendanceRate(registeredCount, attendedCount);
+        tvStatAttendanceRate.setText(rate + "%");
+        tvAttendanceLabel.setText(
+                ActivityStats.attendanceLabel(registeredCount, attendedCount));
+        pbAttendanceRate.setProgress(rate);
     }
 
     // ------------------------------------------------------------------
