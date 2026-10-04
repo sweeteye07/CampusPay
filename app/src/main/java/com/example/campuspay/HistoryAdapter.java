@@ -45,6 +45,14 @@ public class HistoryAdapter
         if (description == null || description.isEmpty()) {
             if (item.isEarn() && item.getEventTitle() != null) {
                 description = "Earned for " + item.getEventTitle();
+            } else if (item.isSend()) {
+                String to = item.getCounterpartyEmail() != null
+                        ? item.getCounterpartyEmail() : "student";
+                description = "Sent to " + to;
+            } else if (item.isReceive()) {
+                String from = item.getCounterpartyEmail() != null
+                        ? item.getCounterpartyEmail() : "student";
+                description = "Received from " + from;
             } else {
                 description = "Credit transaction";
             }
@@ -67,12 +75,22 @@ public class HistoryAdapter
 
         long credits = item.getCredits() != null ? item.getCredits() : 0L;
 
-        if (item.isEarn()) {
-            holder.tvAmount.setText("+" + credits);
-            holder.tvAmount.setTextColor(0xFF2E7D32);
-        } else {
+        if (item.isOutgoing()) {
             holder.tvAmount.setText("-" + credits);
             holder.tvAmount.setTextColor(0xFFC62828);
+        } else {
+            holder.tvAmount.setText("+" + credits);
+            holder.tvAmount.setTextColor(0xFF2E7D32);
+        }
+
+        if (item.isEarn()) {
+            holder.ivIcon.setImageResource(R.drawable.ic_event);
+        } else if (item.isSend()) {
+            holder.ivIcon.setImageResource(R.drawable.ic_logout);
+        } else if (item.isReceive()) {
+            holder.ivIcon.setImageResource(R.drawable.ic_wallet);
+        } else {
+            holder.ivIcon.setImageResource(R.drawable.ic_wallet);
         }
     }
 
@@ -83,6 +101,7 @@ public class HistoryAdapter
 
     static class HistoryViewHolder extends RecyclerView.ViewHolder {
 
+        final android.widget.ImageView ivIcon;
         final TextView tvDescription;
         final TextView tvDate;
         final TextView tvAmount;
@@ -90,6 +109,7 @@ public class HistoryAdapter
         HistoryViewHolder(@NonNull View itemView) {
             super(itemView);
 
+            ivIcon = itemView.findViewById(R.id.ivHistoryIcon);
             tvDescription = itemView.findViewById(R.id.tvHistoryDescription);
             tvDate = itemView.findViewById(R.id.tvHistoryDate);
             tvAmount = itemView.findViewById(R.id.tvHistoryAmount);

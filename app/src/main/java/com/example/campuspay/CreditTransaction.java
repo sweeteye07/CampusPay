@@ -9,6 +9,8 @@ public class CreditTransaction {
     private final String description;
     private final String eventTitle;
     private final Long credits;
+    private final String counterpartyEmail;
+    private final String direction;
     private final com.google.firebase.Timestamp createdAt;
 
     public CreditTransaction(
@@ -17,6 +19,8 @@ public class CreditTransaction {
             String description,
             String eventTitle,
             Long credits,
+            String counterpartyEmail,
+            String direction,
             com.google.firebase.Timestamp createdAt
     ) {
         this.id = id;
@@ -24,6 +28,8 @@ public class CreditTransaction {
         this.description = description;
         this.eventTitle = eventTitle;
         this.credits = credits;
+        this.counterpartyEmail = counterpartyEmail;
+        this.direction = direction;
         this.createdAt = createdAt;
     }
 
@@ -34,6 +40,8 @@ public class CreditTransaction {
                 document.getString("description"),
                 document.getString("eventTitle"),
                 document.getLong("credits"),
+                document.getString("counterpartyEmail"),
+                document.getString("direction"),
                 document.getTimestamp("createdAt")
         );
     }
@@ -58,11 +66,31 @@ public class CreditTransaction {
         return credits;
     }
 
+    public String getCounterpartyEmail() {
+        return counterpartyEmail;
+    }
+
+    public String getDirection() {
+        return direction;
+    }
+
     public com.google.firebase.Timestamp getCreatedAt() {
         return createdAt;
     }
 
     public boolean isEarn() {
         return "earn".equals(type);
+    }
+
+    public boolean isSend() {
+        return "transfer".equals(type) && "out".equals(direction);
+    }
+
+    public boolean isReceive() {
+        return "transfer".equals(type) && "in".equals(direction);
+    }
+
+    public boolean isOutgoing() {
+        return isSend() || ("spend".equals(type));
     }
 }
