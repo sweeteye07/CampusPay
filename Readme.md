@@ -20,7 +20,7 @@ Register for events.
 
 View their registered events.
 
-Scan an event QR code to verify attendance.
+Show a personal QR code so an organizer can verify attendance.
 
 Earn Campus Credits after verified attendance.
 
@@ -38,7 +38,7 @@ Student Registers
      ↓
 Student Attends Event
      ↓
-Scans Event QR
+Organizer Scans Student QR
      ↓
 Attendance Verified
      ↓
@@ -94,13 +94,17 @@ View registered events
 
 QR Attendance
 
-Each event can generate an event-specific QR code.
+Each student has a personal QR code shown on the My QR screen.
 
 The QR contains an identifier in the following format:
 
-CAMPUSPAY_EVENT:<eventId>
+CAMPUSPAY_STUDENT:<userId>
 
-When a student scans the QR:
+Attendance is verified by an organizer, meaning a user whose role field is set to admin.
+
+When an organizer scans a student QR:
+
+The organizer selects the event to reward.
 
 CampusPay validates the QR format.
 
@@ -110,9 +114,11 @@ It checks whether the reward was already claimed.
 
 It reads the event's configured credit value.
 
+The organizer confirms the student's name before awarding.
+
 Credits are added to the student's wallet.
 
-An attendance record is stored.
+An attendance record and a ledger entry are stored in one Firestore transaction.
 
 Credit Rewards
 
@@ -127,6 +133,14 @@ Before: 0 Credits
 After:  100 Credits
 
 The attendance record prevents the same student from claiming the same event reward repeatedly.
+
+Credit Transfers
+
+Students can send credits to another student using their email address.
+
+Transfers run inside a Firestore transaction with a balance check.
+
+The sender and the receiver each receive a ledger entry in their wallet history.
 
 Technology Stack
 
@@ -194,6 +208,7 @@ users
 events
 registrations
 attendance
+transactions
 
 users
 
@@ -256,6 +271,20 @@ attendedAt
 
 This structure also allows the application to determine whether a student has already claimed the reward for an event.
 
+transactions
+
+Stores the credit ledger shown in the wallet history.
+
+Example fields:
+
+type: "earn" or "transfer"
+userId
+credits
+description
+createdAt
+
+Transfer entries also store direction (in or out) and counterpartyEmail, and earning entries store eventId and eventTitle.
+
 Current Application Flow
 
 Login
@@ -298,21 +327,24 @@ registrations/{userId}_{eventId}
 
 Event Attendance
 
-Show Event QR
+Organizer taps Scan on the dashboard
    ↓
-Student scans QR
+Verify organizer role
    ↓
-Validate QR
+Select event
+   ↓
+Scan student QR
+   ↓
+Validate QR and look up student
    ↓
 Check Registration
    ↓
 Check Existing Attendance
    ↓
-Read Event Reward
+Confirm student name
    ↓
-Increment Student Credits
-   ↓
-Create Attendance Record
+Atomic transaction: increment credits,
+create attendance record, write ledger entry
 
 Current Firestore Rules
 
@@ -323,34 +355,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.role == 'admin';
+    }
+
     match /users/{userId} {
-      allow read, write: if request.auth != null
+      allow read: if signedIn()
+        && (request.auth.uid == userId || isAdmin());
+
+      allow create: if signedIn()
         && request.auth.uid == userId;
+
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['name', 'email']);
+
+      // Organizers may only adjust the balance fields after attendance
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['credits', 'lastEventId']);
     }
 
     match /events/{eventId} {
-      allow read: if request.auth != null;
+      allow read: if signedIn();
+      allow create, update: if isAdmin();
     }
 
     match /registrations/{registrationId} {
-      allow create: if request.auth != null
+      allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid;
 
-      allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /attendance/{attendanceId} {
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && (request.resource.data.userId == request.auth.uid
+            || isAdmin());
 
-      allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // A transfer writes one ledger entry for each side
+      allow create: if signedIn();
     }
   }
 }
 
-Security note: The current reward flow is suitable for the college-project prototype, but it is not production-grade. The client currently participates in updating the user's credit balance. A production implementation should move reward issuance to a trusted backend/server-side process and make the credit update atomic.
+Keep these rules in sync with your Firebase console (Firestore > Rules), since the app cannot update them by itself.
+
+Security note: The current reward flow is suitable for the college-project prototype, but it is not production-grade. The client still runs the award and transfer logic, and a compromised client could attempt malformed writes. A production implementation should move reward issuance to a trusted backend/server-side process such as Cloud Functions.
 
 Project Structure
 
@@ -366,9 +433,17 @@ CampusPay/
 │   │       │   ├── EventsActivity.java
 │   │       │   ├── MyEventsActivity.java
 │   │       │   ├── ScanQRActivity.java
-│   │       │   ├── EventQRActivity.java
+│   │       │   ├── MyQRActivity.java
+│   │       │   ├── CreateEventActivity.java
+│   │       │   ├── SendMoneyActivity.java
+│   │       │   ├── ReceiveMoneyActivity.java
+│   │       │   ├── HistoryActivity.java
 │   │       │   ├── Event.java
-│   │       │   └── EventAdapter.java
+│   │       │   ├── EventAdapter.java
+│   │       │   ├── MyEvent.java
+│   │       │   ├── MyEventAdapter.java
+│   │       │   ├── CreditTransaction.java
+│   │       │   └── HistoryAdapter.java
 │   │       │
 │   │       ├── res/
 │   │       │   └── layout/
@@ -377,8 +452,14 @@ CampusPay/
 │   │       │       ├── activity_dashboard.xml
 │   │       │       ├── activity_events.xml
 │   │       │       ├── activity_my_events.xml
-│   │       │       ├── activity_event_qr.xml
-│   │       │       └── item_event.xml
+│   │       │       ├── activity_my_qr.xml
+│   │       │       ├── activity_create_event.xml
+│   │       │       ├── activity_send_money.xml
+│   │       │       ├── activity_receive_money.xml
+│   │       │       ├── activity_history.xml
+│   │       │       ├── item_event.xml
+│   │       │       ├── item_my_event.xml
+│   │       │       └── item_history.xml
 │   │       │
 │   │       └── AndroidManifest.xml
 │   │
@@ -435,7 +516,7 @@ Installing on an Emulator
 
 If ADB is configured:
 
-adb install -r appuild\outputspk\debugpp-debug.apk
+adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 Launch the application:
 
@@ -453,15 +534,17 @@ Open Campus Events.
 
 Register for an event.
 
-Open Show Event QR.
+In the Firebase console, create an event with a credit value, and set a second account's role field to admin.
 
-Scan the event QR from the student dashboard.
+Log in as the organizer account.
 
-Confirm attendance.
+Tap Scan on the dashboard and select the event.
 
-Check the dashboard balance.
+Open My QR on the student account and scan it with the organizer account.
 
-Confirm that the event reward has been added.
+Confirm the student's name and tap Award.
+
+Check the dashboard balance and wallet history on the student account.
 
 Scan the same QR again and verify that the reward cannot be claimed twice.
 
@@ -531,8 +614,6 @@ Event creation and management
 Notifications
 
 Spending/earning analytics
-
-Credit transfer between students
 
 More secure server-side reward processing
 
