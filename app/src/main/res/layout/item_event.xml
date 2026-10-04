@@ -91,25 +91,14 @@
                 style="@style/Widget.CampusPay.Button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 android:minHeight="48dp"
                 android:text="Register"
                 android:textSize="14sp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnEventItemShowQR"
-                style="@style/Widget.CampusPay.Button.Outlined"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:minHeight="48dp"
-                android:text="Show QR"
-                android:textSize="14sp" />
+            
         </LinearLayout>
 
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
-

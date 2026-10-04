@@ -15,7 +15,7 @@ public class EventAdapter
 
     public interface OnEventActionListener {
         void onRegister(Event event);
-        void onShowQR(Event event);
+        
     }
 
     private final List<Event> events;
@@ -67,9 +67,7 @@ public class EventAdapter
                 v -> listener.onRegister(event)
         );
 
-        holder.btnShowQR.setOnClickListener(
-                v -> listener.onShowQR(event)
-        );
+        
     }
 
     @Override
@@ -84,7 +82,7 @@ public class EventAdapter
         final TextView tvCredits;
         final TextView tvDate;
         final com.google.android.material.button.MaterialButton btnRegister;
-        final com.google.android.material.button.MaterialButton btnShowQR;
+        
 
         EventViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -98,7 +96,7 @@ public class EventAdapter
             btnRegister = itemView.findViewById(
                     R.id.btnEventItemRegister
             );
-            btnShowQR = itemView.findViewById(R.id.btnEventItemShowQR);
+            
         }
     }
 }

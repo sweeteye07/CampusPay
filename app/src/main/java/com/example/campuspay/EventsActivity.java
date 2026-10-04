@@ -53,6 +53,13 @@ public class EventsActivity extends AppCompatActivity
 
     private void loadEvents() {
 
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         String userId = mAuth.getCurrentUser().getUid();
 
         db.collection("registrations")
@@ -136,6 +143,13 @@ public class EventsActivity extends AppCompatActivity
     @Override
     public void onRegister(Event event) {
 
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         String userId = mAuth.getCurrentUser().getUid();
 
         String registrationId =
@@ -177,18 +191,5 @@ public class EventsActivity extends AppCompatActivity
                 );
     }
 
-    @Override
-    public void onShowQR(Event event) {
-
-        android.content.Intent intent =
-                new android.content.Intent(
-                        EventsActivity.this,
-                        EventQRActivity.class
-                );
-
-        intent.putExtra("eventId", event.getId());
-        intent.putExtra("eventTitle", event.getTitle());
-
-        startActivity(intent);
-    }
+    
 }

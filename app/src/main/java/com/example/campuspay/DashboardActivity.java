@@ -3,6 +3,7 @@ package com.example.campuspay;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -20,6 +21,8 @@ public class DashboardActivity extends AppCompatActivity {
 
     private TextView tvWelcome;
     private TextView tvBalance;
+    private MaterialButton btnScanQR;
+    private boolean isOrganizer = false;
 
     private com.google.firebase.firestore.ListenerRegistration userListener;
 
@@ -40,7 +43,8 @@ public class DashboardActivity extends AppCompatActivity {
 
         MaterialButton btnMyEvents = findViewById(R.id.btnMyEvents);
 
-        MaterialButton btnScanQR = findViewById(R.id.btnScanQR);
+        btnScanQR = findViewById(R.id.btnScanQR);
+        btnScanQR.setText("My QR");
 
         MaterialButton btnSendMoney = findViewById(R.id.btnSendMoney);
 
@@ -71,10 +75,11 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        // Students show their QR; organizers (role = admin) scan students
         btnScanQR.setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,
-                    ScanQRActivity.class
+                    isOrganizer ? ScanQRActivity.class : MyQRActivity.class
             );
             startActivity(intent);
         });
@@ -95,8 +100,6 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        startListeningToStudentData();
-
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
 
@@ -110,41 +113,61 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
+    // Register in onStart (not onCreate) so the balance refreshes again
+    // every time the user returns to this screen after onStop().
+    @Override
+    protected void onStart() {
+        super.onStart();
+        startListeningToStudentData();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (userListener != null) {
+            userListener.remove();
+            userListener = null;
+        }
+    }
+
     private void startListeningToStudentData() {
 
-    String userId = mAuth.getCurrentUser().getUid();
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
-    userListener = db.collection("users")
-            .document(userId)
-            .addSnapshotListener((documentSnapshot, error) -> {
+        String userId = mAuth.getCurrentUser().getUid();
 
-                if (error != null) {
-                    // Listener failed (e.g. lost permission) — fail quietly
-                    return;
-                }
+        userListener = db.collection("users")
+                .document(userId)
+                .addSnapshotListener((documentSnapshot, error) -> {
 
-                if (documentSnapshot != null && documentSnapshot.exists()) {
-
-                    String name = documentSnapshot.getString("name");
-                    Long credits = documentSnapshot.getLong("credits");
-
-                    if (name != null) {
-                        tvWelcome.setText("Welcome, " + name);
+                    if (error != null) {
+                        // Listener failed (e.g. lost permission) — fail quietly
+                        return;
                     }
 
-                    tvBalance.setText(
-                            credits != null ? credits + " Credits" : "0 Credits"
-                    );
-                }
-            });
-}
+                    if (documentSnapshot != null && documentSnapshot.exists()) {
 
-            @Override
-            protected void onStop() {
-                super.onStop();
-                if (userListener != null) {
-                    userListener.remove();
-                    userListener = null;
-                }
-            }
+                        String name = documentSnapshot.getString("name");
+                        Long credits = documentSnapshot.getLong("credits");
+
+                        isOrganizer = "admin".equals(
+                                documentSnapshot.getString("role")
+                        );
+                        btnScanQR.setText(isOrganizer ? "Scan" : "My QR");
+
+                        if (name != null) {
+                            tvWelcome.setText("Welcome, " + name);
+                        }
+
+                        tvBalance.setText(
+                                credits != null ? credits + " Credits" : "0 Credits"
+                        );
+                    }
+                });
+    }
 }
