@@ -2,7 +2,6 @@ package com.example.campuspay;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,8 +23,6 @@ public class DashboardActivity extends AppCompatActivity {
     private TextView tvBalance;
     private MaterialButton btnScanQR;
     private boolean isOrganizer = false;
-
-    private View cardCreateEvent;
 
     private com.google.firebase.firestore.ListenerRegistration userListener;
 
@@ -79,16 +76,8 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Organizers only: create a new campus event
-        cardCreateEvent = findViewById(R.id.cardCreateEvent);
-
-        findViewById(R.id.btnCreateEvent).setOnClickListener(v -> {
-            Intent intent = new Intent(
-                    DashboardActivity.this,
-                    CreateEventActivity.class
-            );
-            startActivity(intent);
-        });
+        // Event create/manage now lives inside Campus Events
+        // (role-gated there), so no separate dashboard entry is needed.
 
         // Wallet card opens the credit history ledger
         findViewById(R.id.cardWallet).setOnClickListener(v -> {
@@ -183,10 +172,6 @@ public class DashboardActivity extends AppCompatActivity {
                                 documentSnapshot.getString("role")
                         );
                         btnScanQR.setText(isOrganizer ? "Scan" : "My QR");
-
-                        // Organizer tools appear only for role = admin
-                        cardCreateEvent.setVisibility(
-                                isOrganizer ? View.VISIBLE : View.GONE);
 
                         if (name != null) {
                             tvWelcome.setText("Welcome, " + name);
