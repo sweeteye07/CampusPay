@@ -75,7 +75,7 @@ public class ScanQRActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(userDoc -> {
 
-                    if (!"admin".equals(userDoc.getString("role"))) {
+                    if (!UserRole.isOrganizer(userDoc.getString("role"))) {
                         Toast.makeText(
                                 this,
                                 "Only organizers can scan attendance",

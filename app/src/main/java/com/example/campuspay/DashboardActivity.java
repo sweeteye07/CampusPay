@@ -85,7 +85,7 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Students show their QR; organizers (role = admin) scan students
+        // Students show their QR; organizers (role = admin/organizer) scan students
         btnScanQR.setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,
@@ -165,7 +165,7 @@ public class DashboardActivity extends AppCompatActivity {
                         String name = documentSnapshot.getString("name");
                         Long credits = documentSnapshot.getLong("credits");
 
-                        isOrganizer = "admin".equals(
+                        isOrganizer = UserRole.isOrganizer(
                                 documentSnapshot.getString("role")
                         );
                         btnScanQR.setText(isOrganizer ? "Scan" : "My QR");

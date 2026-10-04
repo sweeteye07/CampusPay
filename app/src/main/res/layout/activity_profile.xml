@@ -308,6 +308,20 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Organizers only: entry point to the attendance scanner.
+             Hidden (gone) until the profile loads with an organizer role. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScanAttendance"
+            style="@style/Widget.CampusPay.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="24dp"
+            android:text="Scan student QR"
+            android:visibility="gone"
+            app:icon="@drawable/ic_qr" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEditName"
             style="@style/Widget.CampusPay.Button.Outlined"

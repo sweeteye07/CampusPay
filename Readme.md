@@ -84,6 +84,8 @@ Activity stats: events registered, events attended and total credits earned
 
 The display name can be edited from the profile screen.
 
+When the signed-in user has an organizer role (admin or organizer), the profile also shows a Scan student QR button that opens the attendance scanner.
+
 Campus Events
 
 Students can:
@@ -110,7 +112,7 @@ The QR contains an identifier in the following format:
 
 CAMPUSPAY_STUDENT:<userId>
 
-Attendance is verified by an organizer, meaning a user whose role field is set to admin.
+Attendance is verified by an organizer, meaning a user whose role field is set to admin or organizer.
 
 When an organizer scans a student QR:
 
@@ -372,7 +374,7 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn()
         && get(/databases/$(database)/documents/users/$(request.auth.uid))
-             .data.role == 'admin';
+             .data.role in ['admin', 'organizer'];
     }
 
     match /users/{userId} {
@@ -454,7 +456,8 @@ CampusPay/
 │   │       │   ├── MyEvent.java
 │   │       │   ├── MyEventAdapter.java
 │   │       │   ├── CreditTransaction.java
-│   │       │   └── HistoryAdapter.java
+│   │       │   ├── HistoryAdapter.java
+│   │       │   └── UserRole.java
 │   │       │
 │   │       ├── res/
 │   │       │   └── layout/

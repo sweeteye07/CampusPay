@@ -1,7 +1,9 @@
 package com.example.campuspay;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -10,6 +12,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -39,6 +42,8 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView tvStatRegistered;
     private TextView tvStatAttended;
     private TextView tvStatEarned;
+
+    private MaterialButton btnScanAttendance;
 
     private String userId;
     private String currentName = "";
@@ -80,6 +85,12 @@ public class ProfileActivity extends AppCompatActivity {
         findViewById(R.id.btnEditName)
                 .setOnClickListener(v -> showEditNameDialog());
 
+        // Organizers only: scan a student's QR to award attendance
+        btnScanAttendance = findViewById(R.id.btnScanAttendance);
+        btnScanAttendance.setOnClickListener(v ->
+                startActivity(new Intent(
+                        ProfileActivity.this, ScanQRActivity.class)));
+
         loadProfile();
         loadStats();
     }
@@ -113,12 +124,18 @@ public class ProfileActivity extends AppCompatActivity {
         String role = doc.getString("role");
         Long credits = doc.getLong("credits");
 
+        boolean organizer = UserRole.isOrganizer(role);
+
         currentName = name != null ? name : "";
 
         String nameText = currentName.isEmpty()
                 ? "CampusPay User" : currentName;
         String emailText = email != null ? email : "—";
-        String roleLabel = "admin".equals(role) ? "Organizer" : "Student";
+        String roleLabel = organizer ? "Organizer" : "Student";
+
+        // The scanner entry point only exists for organizers
+        btnScanAttendance.setVisibility(
+                organizer ? View.VISIBLE : View.GONE);
 
         tvProfileName.setText(nameText);
         tvProfileInitials.setText(initialsOf(currentName));
