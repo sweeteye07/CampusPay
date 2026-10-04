@@ -1,6 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.CampusPay" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Base application theme.
+         The app UI is entirely light-styled (white cards, light gradients),
+         so a Light parent is used instead of DayNight: with DayNight, dark
+         mode made input text near-white (colorOnSurface) on white cards. -->
+    <style name="Base.Theme.CampusPay" parent="Theme.Material3.Light.NoActionBar">
 
         <!-- Brand -->
         <item name="colorPrimary">@color/brand_primary</item>
