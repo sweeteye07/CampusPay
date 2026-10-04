@@ -82,7 +82,7 @@ Current credit balance
 
 Activity stats: events registered, events attended and total credits earned
 
-The display name can be edited from the profile screen.
+The display name can be edited from the profile screen, and the Firestore rules allow a student to change only their own name field.
 
 When the signed-in user has the organizer role (role = admin), the profile also shows a Scan student QR button that opens the attendance scanner.
 
@@ -368,7 +368,7 @@ The rules enforce, in short:
 
 Everything requires a signed-in user. Profiles are readable by any signed-in user so Send Credits can look a recipient up by email (that query must keep .limit(1)).
 
-Registration may only create your own profile with exactly name, email, role = student and credits = 0. Name, email and role are locked after creation.
+Registration may only create your own profile with exactly name, email, role = student and credits = 0. Email and role are locked after creation; a student may change only their own display name, and nothing else.
 
 A balance can only change through three paths: your own debit when sending credits, an organizer award backed by a brand-new attendance record with a matching credit value in the same commit, and an incoming transfer matched by the sender's debit in the same commit.
 

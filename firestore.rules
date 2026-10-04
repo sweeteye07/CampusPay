@@ -3,9 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ------------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------------
     function signedIn() {
       return request.auth != null;
     }
@@ -14,13 +11,11 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
-    // Organizer = users/{uid}.role == 'admin' (set by hand in Firebase console)
     function isAdmin() {
       return signedIn()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // User data BEFORE / AFTER the current write (batch/transaction)
     function userBefore(uid) {
       return get(/databases/$(database)/documents/users/$(uid)).data;
     }
@@ -29,26 +24,18 @@ service cloud.firestore {
       return getAfter(/databases/$(database)/documents/users/$(uid)).data;
     }
 
-    // An organizer may reward an event only if it has a reward configured
-    // and it is their own event (events added by hand in the console have
-    // no createdBy, so any organizer may reward those).
     function canRewardEvent(eid, credits) {
       let ev = get(/databases/$(database)/documents/events/$(eid)).data;
       return ev.credits == credits
         && (!('createdBy' in ev) || ev.createdBy == request.auth.uid);
     }
-    // ------------------------------------------------------------------
-    // users/{uid}
-    // ------------------------------------------------------------------
+
     match /users/{userId} {
 
-      // AWARD: an organizer (never for themselves) may raise a student's
-      // balance only if a brand-new attendance record for that student +
-      // event is created in the SAME commit, and the balance increase equals
-      // exactly the credits stored in that record.
       function isAward(uid) {
         let eid = request.resource.data.lastEventId;
         let att = /databases/$(database)/documents/attendance/$(uid + '_' + eid);
+
         return isAdmin()
           && request.auth.uid != uid
           && request.resource.data.diff(resource.data).affectedKeys()
@@ -62,17 +49,24 @@ service cloud.firestore {
                == request.resource.data.credits;
       }
 
-      // DEBIT: you may only LOWER your own balance (sending credits).
       function isDebit() {
         return request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['credits'])
           && request.resource.data.credits < resource.data.credits;
       }
 
-      // INCOMING TRANSFER: someone else's balance may go up only if YOUR
-      // balance goes down by exactly the same amount in the same commit.
+      function isNameUpdate() {
+        return isOwner(userId)
+          && request.resource.data.diff(resource.data)
+               .affectedKeys()
+               .hasOnly(['name'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 100;
+      }
       function isIncomingTransfer() {
         let amount = request.resource.data.credits - resource.data.credits;
+
         return request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['credits'])
           && amount > 0
@@ -80,13 +74,10 @@ service cloud.firestore {
                == userBefore(request.auth.uid).credits - amount;
       }
 
-      // Anyone signed in can read a profile (Send Credits, organizer scan)
       allow get: if signedIn();
 
-      // Send Credits looks up the recipient by email with .limit(1)
       allow list: if signedIn() && request.query.limit <= 1;
 
-      // Registration: only your own doc, always a student with 0 credits
       allow create: if isOwner(userId)
         && request.resource.data.keys().hasOnly(['name', 'email', 'role', 'credits'])
         && request.resource.data.keys().hasAll(['name', 'email', 'role', 'credits'])
@@ -98,24 +89,18 @@ service cloud.firestore {
         && request.resource.data.role == 'student'
         && request.resource.data.credits == 0;
 
-      // name / email / role are locked forever. Credits only move through:
-      //  - your own debit (sending credits)
-      //  - an organizer award backed by an attendance record
-      //  - an incoming transfer matched by the sender's debit
       allow update: if signedIn()
         && request.resource.data.credits is int
         && request.resource.data.credits >= 0
         && (
-             (isOwner(userId) && isDebit())
+             isNameUpdate()
+          || (isOwner(userId) && isDebit())
           || (!isOwner(userId) && (isAward(userId) || isIncomingTransfer()))
         );
 
       allow delete: if false;
     }
 
-    // ------------------------------------------------------------------
-    // events/{eventId}
-    // ------------------------------------------------------------------
     match /events/{eventId} {
       allow read: if signedIn();
 
@@ -136,9 +121,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // ------------------------------------------------------------------
-    // registrations/{uid_eventId}
-    // ------------------------------------------------------------------
     match /registrations/{registrationId} {
 
       allow create: if signedIn()
@@ -150,7 +132,6 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
         && request.resource.data.registeredAt == request.time;
 
-      // Students read their own; organizers check registration when scanning
       allow get: if signedIn()
         && (registrationId.matches(request.auth.uid + '_.+') || isAdmin());
 
@@ -158,10 +139,6 @@ service cloud.firestore {
 
       allow update, delete: if false;
     }
-    // ------------------------------------------------------------------
-    // attendance/{studentUid_eventId}  (one reward per student per event)
-    // Created ONLY by an organizer after scanning the student's QR.
-    // ------------------------------------------------------------------
     match /attendance/{attendanceId} {
 
       allow create: if isAdmin()
@@ -178,7 +155,6 @@ service cloud.firestore {
         && canRewardEvent(request.resource.data.eventId, request.resource.data.creditsAwarded)
         && request.resource.data.attendedAt == request.time;
 
-      // Students read their own; organizers check "already rewarded"
       allow get: if signedIn()
         && (attendanceId.matches(request.auth.uid + '_.+') || isAdmin());
 
@@ -187,16 +163,12 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ------------------------------------------------------------------
-    // transactions/{id}  (credit history ledger - create-only)
-    // ------------------------------------------------------------------
     match /transactions/{txId} {
 
-      // Earn entry: written by the organizer, only alongside a brand-new
-      // attendance record that carries the same credits
       function isEarnEntry() {
         let d = request.resource.data;
         let att = /databases/$(database)/documents/attendance/$(d.userId + '_' + d.eventId);
+
         return d.type == 'earn'
           && d.keys().hasOnly(
                ['type', 'userId', 'eventId', 'eventTitle', 'credits', 'description', 'createdAt'])
@@ -209,9 +181,9 @@ service cloud.firestore {
           && getAfter(att).data.awardedBy == request.auth.uid;
       }
 
-      // Transfer (sender side): your balance must drop by exactly `credits`
       function isTransferOutEntry() {
         let d = request.resource.data;
+
         return d.type == 'transfer'
           && d.direction == 'out'
           && d.keys().hasOnly(
@@ -221,9 +193,9 @@ service cloud.firestore {
                == userBefore(request.auth.uid).credits - d.credits;
       }
 
-      // Transfer (recipient side): that student's balance must rise by exactly `credits`
       function isTransferInEntry() {
         let d = request.resource.data;
+
         return d.type == 'transfer'
           && d.direction == 'in'
           && d.keys().hasOnly(
@@ -243,7 +215,5 @@ service cloud.firestore {
 
       allow update, delete: if false;
     }
-
-    // Everything else is denied by default
   }
 }
