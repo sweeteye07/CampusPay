@@ -106,6 +106,8 @@ Prevent duplicate registration
 
 View registered events
 
+Each event carries a registration deadline (day and time, picked from a date list then a 12-hour AM/PM time list) and a seat capacity set by the organizer (capacity 1-1000). The list shows "Closes <day, time>" and live "taken/capacity seats"; the Register button reads Full or Closed when the window shuts. Registration runs in one transaction that re-checks the deadline and seats, blocks duplicates, and takes one seat — the rules re-verify the deadline and the atomic seat counter in the same commit, so neither can be bypassed.
+
 Organizers (role = admin) additionally get a Create Event button on the dashboard, so events can be published from the app instead of the Firebase console.
 
 QR Attendance
@@ -157,6 +159,25 @@ Students can send credits to another student using their email address.
 Transfers run inside a Firestore transaction with a balance check.
 
 The sender and the receiver each receive a ledger entry in their wallet history.
+
+Campus Marketplace
+
+Organizers list rewards (title, description, price, stock) from the Campus Marketplace screen, and can edit, hide or delete their own listings.
+
+Students can:
+
+Browse visible rewards with live stock counts.
+
+Redeem a reward in one atomic Firestore transaction that debits the exact price, holds one unit of stock, creates a pending pickup order and writes a spend ledger entry.
+
+Open My Orders and show a personal pickup QR (CAMPUSPAY_PICKUP:<redemptionId>) for each pending order.
+
+An organizer taps Scan Pickup, scans the QR, confirms the buyer, and marks the order handed over (pending -> handed) in one transaction. Only the provider who listed the item can hand over its orders. Past orders are kept for records.
+
+The rules enforce, in short: item prices match at redeem time, stock and balance change atomically in the same commit, and only organizers can mark orders handed over. Deploy with:
+
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
 
 Technology Stack
 
@@ -225,6 +246,8 @@ events
 registrations
 attendance
 transactions
+market_items
+redemptions
 
 users
 

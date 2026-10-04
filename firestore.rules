@@ -30,6 +30,34 @@ service cloud.firestore {
         && (!('createdBy' in ev) || ev.createdBy == request.auth.uid);
     }
 
+    function eventDoc(eid) {
+      return get(/databases/$(database)/documents/events/$(eid)).data;
+    }
+
+    function eventDocAfter(eid) {
+      return getAfter(/databases/$(database)/documents/events/$(eid)).data;
+    }
+
+    // Registration deadlines are enforced server-side. Legacy events
+    // without a deadline stay open.
+    function registrationHonoursDeadline(eid) {
+      let ev = eventDoc(eid);
+      return !('deadline' in ev) || request.time <= ev.deadline;
+    }
+
+    // Capacity is enforced via an atomic seat counter: every registration
+    // for a capped event must bump registeredCount by exactly one in the
+    // same commit, never exceeding capacity. Legacy events without a
+    // capacity keep the old behavior.
+    function registrationHonoursCapacity(eid) {
+      let ev = eventDoc(eid);
+      let after = eventDocAfter(eid);
+      return !('capacity' in ev)
+        || ('registeredCount' in ev
+            && after.registeredCount == ev.registeredCount + 1
+            && after.registeredCount <= ev.capacity);
+    }
+
     match /users/{userId} {
 
       function isAward(uid) {
@@ -106,7 +134,8 @@ service cloud.firestore {
 
       allow create: if isAdmin()
         && request.resource.data.keys().hasOnly(
-             ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt'])
+             ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt',
+              'deadline', 'capacity', 'registeredCount'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 100
@@ -116,15 +145,25 @@ service cloud.firestore {
         && request.resource.data.credits <= 10000
         && request.resource.data.date is string
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdAt == request.time;
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.deadline is timestamp
+        && request.resource.data.deadline > request.time
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 1
+        && request.resource.data.capacity <= 1000
+        && request.resource.data.registeredCount == 0;
 
-      // Only the owning organizer (or any organizer for owner-less
-      // console events) may edit; createdBy/createdAt are immutable.
-      allow update: if isAdmin()
+      // Two update paths: the owning organizer edits listing fields
+      // (createdBy/createdAt/registeredCount immutable, capacity can
+      // never shrink below seats already taken), or a student atomically
+      // takes one seat as part of a registration in the same commit.
+      allow update: if (
+        isAdmin()
         && (!('createdBy' in resource.data)
             || resource.data.createdBy == request.auth.uid)
         && request.resource.data.keys().hasOnly(
-             ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt'])
+             ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt',
+              'deadline', 'capacity', 'registeredCount'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 100
@@ -134,7 +173,23 @@ service cloud.firestore {
         && request.resource.data.credits <= 10000
         && request.resource.data.date is string
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.deadline is timestamp
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 1
+        && request.resource.data.capacity <= 1000
+        && (!('registeredCount' in resource.data)
+            || request.resource.data.registeredCount == resource.data.registeredCount)
+        && (!('registeredCount' in resource.data)
+            || request.resource.data.capacity >= resource.data.registeredCount)
+      ) || (
+        signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['registeredCount'])
+        && request.resource.data.registeredCount == resource.data.registeredCount + 1
+        && (!('capacity' in resource.data)
+            || request.resource.data.registeredCount <= resource.data.capacity)
+      );
 
       // Same ownership rule for deletes so one organizer
       // cannot remove another organizer's event.
@@ -145,6 +200,9 @@ service cloud.firestore {
 
     match /registrations/{registrationId} {
 
+      // Deadline and capacity are enforced here on top of the existing
+      // checks: the same commit must take one seat (counter bump) for
+      // capped events, and request.time must precede the deadline.
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(
              ['userId', 'eventId', 'eventTitle', 'registeredAt'])
@@ -152,7 +210,9 @@ service cloud.firestore {
         && request.resource.data.eventId is string
         && registrationId == request.auth.uid + '_' + request.resource.data.eventId
         && exists(/databases/$(database)/documents/events/$(request.resource.data.eventId))
-        && request.resource.data.registeredAt == request.time;
+        && request.resource.data.registeredAt == request.time
+        && registrationHonoursDeadline(request.resource.data.eventId)
+        && registrationHonoursCapacity(request.resource.data.eventId);
 
       allow get: if signedIn()
         && (registrationId.matches(request.auth.uid + '_.+') || isAdmin());
@@ -183,6 +243,117 @@ service cloud.firestore {
       allow list: if signedIn() && resource.data.userId == request.auth.uid;
 
       allow update, delete: if false;
+    }
+
+    match /market_items/{itemId} {
+      allow read: if signedIn();
+
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(
+             ['title', 'description', 'price', 'stock', 'active', 'createdBy', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.price is int
+        && request.resource.data.price > 0
+        && request.resource.data.price <= 10000
+        && request.resource.data.stock is int
+        && request.resource.data.stock >= 0
+        && request.resource.data.stock <= 1000
+        && request.resource.data.active is bool
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      // Two update paths: the owning organizer edits listing fields
+      // (createdBy/createdAt immutable), or a buyer atomically holds
+      // one unit of stock as part of a redemption in the same commit.
+      allow update: if (
+        isAdmin()
+        && (!('createdBy' in resource.data)
+            || resource.data.createdBy == request.auth.uid)
+        && request.resource.data.keys().hasOnly(
+             ['title', 'description', 'price', 'stock', 'active', 'createdBy', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.price is int
+        && request.resource.data.price > 0
+        && request.resource.data.price <= 10000
+        && request.resource.data.stock is int
+        && request.resource.data.stock >= 0
+        && request.resource.data.stock <= 1000
+        && request.resource.data.active is bool
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+      ) || (
+        signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['stock'])
+        && request.resource.data.stock == resource.data.stock - 1
+        && request.resource.data.stock >= 0
+      );
+
+      allow delete: if isAdmin()
+        && (!('createdBy' in resource.data)
+            || resource.data.createdBy == request.auth.uid);
+    }
+
+    match /redemptions/{redemptionId} {
+
+      // A student redeems one unit: the same commit must debit the
+      // exact price from their balance and hold one unit of stock
+      // (both verified below with getAfter), plus a matching spend
+      // ledger entry (verified by isSpendEntry in the same commit).
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(
+             ['userId', 'itemId', 'itemTitle', 'price', 'status', 'redeemedAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.itemId is string
+        && request.resource.data.price is int
+        && request.resource.data.price > 0
+        && request.resource.data.status == 'pending'
+        && request.resource.data.redeemedAt == request.time
+        && exists(/databases/$(database)/documents/market_items/$(request.resource.data.itemId))
+        && get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.price
+             == request.resource.data.price
+        && get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.active
+             == true
+        && getAfter(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.stock
+             == get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.stock - 1
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.credits
+             == userBefore(request.auth.uid).credits - request.resource.data.price;
+
+      allow get: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow list: if signedIn() && resource.data.userId == request.auth.uid;
+
+      // Organizer handover: pending -> handed only, stamped in-commit,
+      // and only by the marketplace service provider who listed the
+      // item (owner-less items may be handed over by any organizer).
+      allow update: if isAdmin()
+        && request.resource.data.keys().hasOnly(
+             ['userId', 'itemId', 'itemTitle', 'price', 'status',
+              'redeemedAt', 'handedAt', 'handedBy'])
+        && request.resource.data.keys().hasAll(
+             ['userId', 'itemId', 'itemTitle', 'price', 'status',
+              'redeemedAt', 'handedAt', 'handedBy'])
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'handed'
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.itemId == resource.data.itemId
+        && request.resource.data.price == resource.data.price
+        && request.resource.data.handedBy == request.auth.uid
+        && request.resource.data.handedAt == request.time
+        && (
+             !('createdBy' in get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data)
+             || get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.createdBy
+                  == request.auth.uid
+           );
+
+      allow delete: if false;
     }
 
     match /transactions/{txId} {
@@ -227,13 +398,26 @@ service cloud.firestore {
                == userBefore(d.userId).credits + d.credits;
       }
 
+      function isSpendEntry() {
+        let d = request.resource.data;
+
+        return d.type == 'spend'
+          && d.direction == 'out'
+          && d.keys().hasOnly(
+               ['type', 'direction', 'userId', 'itemId', 'itemTitle', 'credits', 'description', 'createdAt'])
+          && d.userId == request.auth.uid
+          && d.itemId is string
+          && userAfter(request.auth.uid).credits
+               == userBefore(request.auth.uid).credits - d.credits;
+      }
+
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
 
       allow create: if signedIn()
         && request.resource.data.credits is int
         && request.resource.data.credits > 0
         && request.resource.data.createdAt == request.time
-        && (isEarnEntry() || isTransferOutEntry() || isTransferInEntry());
+        && (isEarnEntry() || isTransferOutEntry() || isTransferInEntry() || isSpendEntry());
 
       allow update, delete: if false;
     }
