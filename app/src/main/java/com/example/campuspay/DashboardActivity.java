@@ -44,6 +44,26 @@ public class DashboardActivity extends AppCompatActivity {
 
         MaterialButton btnHistory = findViewById(R.id.btnHistory);
 
+        MaterialButton btnSendMoney = findViewById(R.id.btnSendMoney);
+
+        MaterialButton btnReceiveMoney = findViewById(R.id.btnReceiveMoney);
+
+        btnSendMoney.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    SendMoneyActivity.class
+            );
+            startActivity(intent);
+        });
+
+        btnReceiveMoney.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    ReceiveMoneyActivity.class
+            );
+            startActivity(intent);
+        });
+
         btnHistory.setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,

@@ -185,6 +185,38 @@
                 app:icon="@drawable/ic_wallet" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Send credits row -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CampusPay.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendMoney"
+                style="@style/Widget.CampusPay.RowAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Credits"
+                app:icon="@drawable/ic_logout" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Receive credits row -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CampusPay.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReceiveMoney"
+                style="@style/Widget.CampusPay.RowAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Receive Credits"
+                app:icon="@drawable/ic_qr" />
+        </com.google.android.material.card.MaterialCardView>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogout"
             style="@style/Widget.CampusPay.Button.Outlined"
