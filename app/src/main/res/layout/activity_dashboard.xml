@@ -169,6 +169,22 @@
                 app:icon="@drawable/ic_qr" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Credit history row -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CampusPay.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnHistory"
+                style="@style/Widget.CampusPay.RowAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Credit History"
+                app:icon="@drawable/ic_wallet" />
+        </com.google.android.material.card.MaterialCardView>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogout"
             style="@style/Widget.CampusPay.Button.Outlined"

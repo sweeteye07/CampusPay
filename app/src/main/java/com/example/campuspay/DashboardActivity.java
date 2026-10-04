@@ -42,6 +42,16 @@ public class DashboardActivity extends AppCompatActivity {
 
         MaterialButton btnScanQR = findViewById(R.id.btnScanQR);
 
+        MaterialButton btnHistory = findViewById(R.id.btnHistory);
+
+        btnHistory.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    HistoryActivity.class
+            );
+            startActivity(intent);
+        });
+
         btnScanQR.setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,

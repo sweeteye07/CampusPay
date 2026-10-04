@@ -42,6 +42,9 @@
         <activity
             android:name=".EventQRActivity"
             android:exported="false" />
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false" />
     </application>
 
 
