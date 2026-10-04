@@ -84,7 +84,7 @@ Activity stats: events registered, events attended and total credits earned
 
 The display name can be edited from the profile screen.
 
-When the signed-in user has an organizer role (admin or organizer), the profile also shows a Scan student QR button that opens the attendance scanner.
+When the signed-in user has the organizer role (role = admin), the profile also shows a Scan student QR button that opens the attendance scanner.
 
 Campus Events
 
@@ -112,7 +112,7 @@ The QR contains an identifier in the following format:
 
 CAMPUSPAY_STUDENT:<userId>
 
-Attendance is verified by an organizer, meaning a user whose role field is set to admin or organizer.
+Attendance is verified by an organizer, meaning a user whose role field is set to admin (promoted by hand in the Firebase console).
 
 When an organizer scans a student QR:
 
@@ -360,90 +360,25 @@ create attendance record, write ledger entry
 
 Current Firestore Rules
 
-The current rules provide authenticated access and restrict student-specific records to the logged-in student.
-
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid))
-             .data.role in ['admin', 'organizer'];
-    }
-
-    match /users/{userId} {
-      // Profiles must be readable by any signed-in student: SendMoney
-      // looks recipients up with a list query on email and reads the
-      // recipient document inside the transfer transaction, which an
-      // own-uid-only rule would deny.
-      allow read: if signedIn();
-
-      // A client may only create its own profile as a starting student,
-      // so nobody can sign up with role "admin" or a preset balance.
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.role == 'student'
-        && request.resource.data.credits == 0;
-
-      allow update: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.diff(resource.data)
-             .affectedKeys().hasOnly(['name', 'email']);
-
-      // Organizers may only adjust the balance fields after attendance
-      allow update: if isAdmin()
-        && request.resource.data.diff(resource.data)
-             .affectedKeys().hasOnly(['credits', 'lastEventId']);
-    }
-
-    match /events/{eventId} {
-      allow read: if signedIn();
-      allow create, update: if isAdmin();
-    }
-
-    match /registrations/{registrationId} {
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid;
-
-      allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /attendance/{attendanceId} {
-      allow create: if signedIn()
-        && (request.resource.data.userId == request.auth.uid
-            || isAdmin());
-
-      allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
-    }
-
-    match /transactions/{transactionId} {
-      allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
-
-      // Only your own ledger entries, an organizer's entries, or
-      // transfer records may be written, so nobody can forge
-      // "earn" entries into another student's history.
-      allow create: if signedIn()
-        && (request.resource.data.userId == request.auth.uid
-            || isAdmin()
-            || request.resource.data.type == 'transfer');
-    }
-  }
-}
-
-These rules are version-controlled in firestore.rules at the project root. Keep the file, your Firebase console (Firestore > Rules) and this section in sync by deploying with:
+The full rules text is version-controlled in firestore.rules at the project root. The Firebase console and this file must always hold the same text; deploy with:
 
 firebase deploy --only firestore:rules
 
-Security note: The current reward flow is suitable for the college-project prototype, but it is not production-grade. The client still runs the award and transfer logic, user profiles are readable by any signed-in student because the transfer lookup needs it, and a compromised client could attempt malformed writes within the allowed fields. A production implementation should move reward issuance to a trusted backend/server-side process such as Cloud Functions.
+The rules enforce, in short:
+
+Everything requires a signed-in user. Profiles are readable by any signed-in user so Send Credits can look a recipient up by email (that query must keep .limit(1)).
+
+Registration may only create your own profile with exactly name, email, role = student and credits = 0. Name, email and role are locked after creation.
+
+A balance can only change through three paths: your own debit when sending credits, an organizer award backed by a brand-new attendance record with a matching credit value in the same commit, and an incoming transfer matched by the sender's debit in the same commit.
+
+Attendance records are created only by an organizer, only for a registered student, only once per event, and only for events that organizer created (console-created events without an owner can be rewarded by any organizer).
+
+Ledger entries must be consistent with the balance changes in the same transaction: earn entries must match a new attendance record, transfer entries must match the exact balance deltas.
+
+Events can only be created by organizers, with a reward between 1 and 10000 credits; updates and deletes are organizer-only.
+
+Security note: The rules are enforced server-side with transactional consistency checks (getAfter), so forged balances, self-awards and mismatched ledger entries are rejected even if the client is tampered with. The app remains a college-project prototype: the reward flow still runs from the client, and a production implementation should move reward issuance to a Cloud Function.
 
 Project Structure
 
