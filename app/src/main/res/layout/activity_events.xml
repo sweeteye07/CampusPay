@@ -31,6 +31,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbarEvents" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCreateEventInline"
+        style="@style/Widget.CampusPay.Button"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp"
+        android:text="Create Event"
+        android:visibility="gone"
+        app:icon="@drawable/ic_event"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvEventsSubtitle" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/eventsRecyclerView"
         android:layout_width="0dp"
@@ -43,6 +58,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvEventsSubtitle" />
+        app:layout_constraintTop_toBottomOf="@id/btnCreateEventInline" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

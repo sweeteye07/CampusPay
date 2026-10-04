@@ -1,8 +1,11 @@
 package com.example.campuspay;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,6 +32,10 @@ public class EventsActivity extends AppCompatActivity
     private final List<Event> events = new ArrayList<>();
     private final Set<String> registeredEventIds = new HashSet<>();
 
+    private boolean isOrganizer = false;
+    private String currentUserId = null;
+    private com.google.android.material.button.MaterialButton btnCreateEventInline;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,13 +49,51 @@ public class EventsActivity extends AppCompatActivity
 
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        btnCreateEventInline = findViewById(R.id.btnCreateEventInline);
+        btnCreateEventInline.setOnClickListener(v ->
+                startActivity(new Intent(this, CreateEventActivity.class)));
+
         RecyclerView recyclerView = findViewById(R.id.eventsRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         adapter = new EventAdapter(events, this);
         recyclerView.setAdapter(adapter);
+    }
 
-        loadEvents();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resolveRoleThenLoad();
+    }
+
+    /** Role check drives Create button + per-row Edit/Delete visibility. */
+    private void resolveRoleThenLoad() {
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        currentUserId = mAuth.getCurrentUser().getUid();
+
+        db.collection("users")
+                .document(currentUserId)
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    isOrganizer = UserRole.isOrganizer(userDoc.getString("role"));
+                    adapter.setAdminMode(isOrganizer, currentUserId);
+                    btnCreateEventInline.setVisibility(
+                            isOrganizer ? View.VISIBLE : View.GONE);
+                    loadEvents();
+                })
+                .addOnFailureListener(e -> {
+                    // Fail closed: student view if role can't be verified.
+                    isOrganizer = false;
+                    adapter.setAdminMode(false, currentUserId);
+                    btnCreateEventInline.setVisibility(View.GONE);
+                    loadEvents();
+                });
     }
 
     private void loadEvents() {
@@ -118,7 +163,8 @@ public class EventsActivity extends AppCompatActivity
                                 document.getString("title"),
                                 document.getString("description"),
                                 document.getLong("credits"),
-                                document.getString("date")
+                                document.getString("date"),
+                                document.getString("createdBy")
                         );
 
                         event.setRegistered(
@@ -188,6 +234,42 @@ public class EventsActivity extends AppCompatActivity
                                         + e.getMessage(),
                                 Toast.LENGTH_LONG
                         ).show()
+                );
+    }
+
+    @Override
+    public void onEdit(Event event) {
+        Intent intent = new Intent(this, CreateEventActivity.class);
+        intent.putExtra(CreateEventActivity.EXTRA_EVENT_ID, event.getId());
+        startActivity(intent);
+    }
+
+    @Override
+    public void onDelete(Event event) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete event?")
+                .setMessage("Delete \"" + event.getTitle() + "\"?\n\n"
+                        + "Students will no longer be able to register for it. "
+                        + "Past registrations and rewards are kept for records.")
+                .setPositiveButton("Delete", (dialog, which) -> deleteEvent(event))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteEvent(Event event) {
+        db.collection("events")
+                .document(event.getId())
+                .delete()
+                .addOnSuccessListener(unused -> {
+                    events.remove(event);
+                    adapter.notifyDataSetChanged();
+                    Toast.makeText(this, "Event deleted",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this,
+                                "Delete failed: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show()
                 );
     }
 

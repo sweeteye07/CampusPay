@@ -96,7 +96,39 @@
                 android:text="Register"
                 android:textSize="14sp" />
 
-            
+
+        </LinearLayout>
+
+        <!-- Organizer/admin row: visible only for events you can manage -->
+        <LinearLayout
+            android:id="@+id/layoutEventAdminActions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEventItemEdit"
+                style="@style/Widget.CampusPay.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:text="Edit"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEventItemDelete"
+                style="@style/Widget.CampusPay.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:text="Delete"
+                android:textSize="14sp" />
+
         </LinearLayout>
 
     </LinearLayout>
