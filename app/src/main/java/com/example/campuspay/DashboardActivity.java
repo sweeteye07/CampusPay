@@ -2,6 +2,7 @@ package com.example.campuspay;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,6 +26,10 @@ public class DashboardActivity extends AppCompatActivity {
     private boolean isOrganizer = false;
 
     private com.google.firebase.firestore.ListenerRegistration userListener;
+    private com.google.firebase.firestore.ListenerRegistration txListener;
+    private com.google.firebase.firestore.ListenerRegistration eventListener;
+    private com.google.firebase.firestore.ListenerRegistration itemListener;
+    private String notifyUserId = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,13 +42,13 @@ public class DashboardActivity extends AppCompatActivity {
         tvWelcome = findViewById(R.id.tvWelcome);
         tvBalance = findViewById(R.id.tvBalance);
 
-        MaterialButton btnLogout = findViewById(R.id.btnLogout);
-
         MaterialButton btnEvents = findViewById(R.id.btnEvents);
 
         MaterialButton btnMyEvents = findViewById(R.id.btnMyEvents);
 
         btnScanQR = findViewById(R.id.btnScanQR);
+        // Hidden on the home screen for now (see layout); kept wired
+        // so scan can return later without code changes.
         btnScanQR.setText("My QR");
 
         MaterialButton btnSendMoney = findViewById(R.id.btnSendMoney);
@@ -72,6 +77,17 @@ public class DashboardActivity extends AppCompatActivity {
             Intent intent = new Intent(
                     DashboardActivity.this,
                     ProfileActivity.class
+            );
+            startActivity(intent);
+        });
+
+        NotificationHelper.ensureChannels(this);
+        requestNotificationPermissionIfNeeded();
+
+        findViewById(R.id.btnNotifications).setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    NotificationsActivity.class
             );
             startActivity(intent);
         });
@@ -113,16 +129,12 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        btnLogout.setOnClickListener(v -> {
-            mAuth.signOut();
-
+        findViewById(R.id.btnMarketplace).setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,
-                    MainActivity.class
+                    MarketplaceActivity.class
             );
-
             startActivity(intent);
-            finish();
         });
     }
 
@@ -132,6 +144,9 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         startListeningToStudentData();
+        startNotificationListeners();
+        EventReminderScheduler.scheduleDaily(this);
+        EventReminderScheduler.checkRemindersNow(this);
     }
 
     @Override
@@ -141,6 +156,141 @@ public class DashboardActivity extends AppCompatActivity {
             userListener.remove();
             userListener = null;
         }
+        if (txListener != null) {
+            txListener.remove();
+            txListener = null;
+        }
+        if (eventListener != null) {
+            eventListener.remove();
+            eventListener = null;
+        }
+        if (itemListener != null) {
+            itemListener.remove();
+            itemListener = null;
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT
+                < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    1001);
+        }
+    }
+
+    /**
+     * Live listeners that turn Firestore changes into system notifications:
+     * payments received, credits earned, and newly added events.
+     * First-run snapshots only seed the seen-sets (no notification storm).
+     */
+    private void startNotificationListeners() {
+        if (mAuth.getCurrentUser() == null) {
+            return;
+        }
+        notifyUserId = mAuth.getCurrentUser().getUid();
+        final String userId = notifyUserId;
+        final boolean firstRun =
+                NotificationTracker.isFirstRun(this, userId);
+
+        txListener = db.collection("transactions")
+                .whereEqualTo("userId", userId)
+                .orderBy("createdAt",
+                        com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(10)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null || snapshots == null) {
+                        return;
+                    }
+                    for (com.google.firebase.firestore.DocumentChange change
+                            : snapshots.getDocumentChanges()) {
+                        if (change.getType()
+                                != com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                            continue;
+                        }
+                        String txId = change.getDocument().getId();
+                        boolean isNew = NotificationTracker.markSeenTx(
+                                DashboardActivity.this, userId, txId);
+                        if (firstRun || !isNew) {
+                            continue;
+                        }
+                        CreditTransaction tx = CreditTransaction.fromDocument(
+                                change.getDocument());
+                        if (tx.isReceive()) {
+                            NotificationHelper.notifyPaymentReceived(
+                                    DashboardActivity.this,
+                                    tx.getCredits() != null ? tx.getCredits() : 0L,
+                                    tx.getCounterpartyEmail());
+                        } else if (tx.isEarn()) {
+                            NotificationHelper.notifyCreditsEarned(
+                                    DashboardActivity.this,
+                                    tx.getCredits() != null ? tx.getCredits() : 0L,
+                                    tx.getEventTitle());
+                        }
+                    }
+                });
+
+        eventListener = db.collection("events")
+                .limit(20)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null || snapshots == null) {
+                        return;
+                    }
+                    for (com.google.firebase.firestore.DocumentChange change
+                            : snapshots.getDocumentChanges()) {
+                        if (change.getType()
+                                != com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                            continue;
+                        }
+                        String eventId = change.getDocument().getId();
+                        boolean isNew = NotificationTracker.markSeenEvent(
+                                DashboardActivity.this, userId, eventId);
+                        if (firstRun || !isNew) {
+                            continue;
+                        }
+                        String title = change.getDocument().getString("title");
+                        Long credits = change.getDocument().getLong("credits");
+                        NotificationHelper.notifyNewEvent(
+                                DashboardActivity.this,
+                                title != null ? title : "Campus Event",
+                                credits != null ? credits : 0L);
+                    }
+                    NotificationTracker.markInitialized(
+                            DashboardActivity.this, userId);
+                });
+
+        itemListener = db.collection("market_items")
+                .limit(20)
+                .addSnapshotListener((snapshots, error) -> {
+                    if (error != null || snapshots == null) {
+                        return;
+                    }
+                    for (com.google.firebase.firestore.DocumentChange change
+                            : snapshots.getDocumentChanges()) {
+                        if (change.getType()
+                                != com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                            continue;
+                        }
+                        String itemId = change.getDocument().getId();
+                        boolean isNew = NotificationTracker.markSeenItem(
+                                DashboardActivity.this, userId, itemId);
+                        if (firstRun || !isNew) {
+                            continue;
+                        }
+                        String title = change.getDocument().getString("title");
+                        Long price = change.getDocument().getLong("price");
+                        NotificationHelper.notifyNewItem(
+                                DashboardActivity.this,
+                                title != null ? title : "Reward",
+                                price != null ? price : 0L);
+                    }
+                });
     }
 
     private void startListeningToStudentData() {
@@ -172,6 +322,10 @@ public class DashboardActivity extends AppCompatActivity {
                                 documentSnapshot.getString("role")
                         );
                         btnScanQR.setText(isOrganizer ? "Scan" : "My QR");
+
+                        // My Events is students-only.
+                        findViewById(R.id.cardMyEvents).setVisibility(
+                                isOrganizer ? View.GONE : View.VISIBLE);
 
                         if (name != null) {
                             tvWelcome.setText("Welcome, " + name);

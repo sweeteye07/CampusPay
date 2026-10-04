@@ -46,6 +46,18 @@
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNotifications"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Notifications"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                app:icon="@drawable/ic_bell"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_primary" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnProfile"
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="48dp"
@@ -170,7 +182,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Quick actions: Send / Receive / Scan QR -->
+        <!-- Quick actions: Send / Receive -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -185,7 +197,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:orientation="horizontal"
-            android:weightSum="3">
+            android:weightSum="2">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSendMoney"
@@ -202,11 +214,12 @@
                 style="@style/Widget.CampusPay.QuickAction"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:text="Receive"
                 app:icon="@drawable/ic_receive" />
 
+            <!-- Scan hidden for now for both students and organizers.
+                 Will return later: keep the button and its wiring. -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnScanQR"
                 style="@style/Widget.CampusPay.QuickAction"
@@ -214,6 +227,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Scan QR"
+                android:visibility="gone"
                 app:icon="@drawable/ic_qr" />
         </LinearLayout>
 
@@ -237,8 +251,19 @@
             android:text="Campus Events"
             app:icon="@drawable/ic_event" />
 
-        <!-- My Events row -->
+        <!-- Campus Marketplace (featured) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMarketplace"
+            style="@style/Widget.CampusPay.FeaturedAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Campus Marketplace"
+            app:icon="@drawable/ic_wallet" />
+
+        <!-- My Events row (students only) -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardMyEvents"
             style="@style/Widget.CampusPay.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -252,15 +277,6 @@
                 android:text="My Events"
                 app:icon="@drawable/ic_event" />
         </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogout"
-            style="@style/Widget.CampusPay.Button.Outlined"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Logout"
-            app:icon="@drawable/ic_logout" />
 
     </LinearLayout>
 </ScrollView>
