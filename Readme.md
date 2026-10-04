@@ -378,11 +378,18 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn()
-        && (request.auth.uid == userId || isAdmin());
+      // Profiles must be readable by any signed-in student: SendMoney
+      // looks recipients up with a list query on email and reads the
+      // recipient document inside the transfer transaction, which an
+      // own-uid-only rule would deny.
+      allow read: if signedIn();
 
+      // A client may only create its own profile as a starting student,
+      // so nobody can sign up with role "admin" or a preset balance.
       allow create: if signedIn()
-        && request.auth.uid == userId;
+        && request.auth.uid == userId
+        && request.resource.data.role == 'student'
+        && request.resource.data.credits == 0;
 
       allow update: if signedIn()
         && request.auth.uid == userId
@@ -421,15 +428,22 @@ service cloud.firestore {
       allow read: if signedIn()
         && (resource.data.userId == request.auth.uid || isAdmin());
 
-      // A transfer writes one ledger entry for each side
-      allow create: if signedIn();
+      // Only your own ledger entries, an organizer's entries, or
+      // transfer records may be written, so nobody can forge
+      // "earn" entries into another student's history.
+      allow create: if signedIn()
+        && (request.resource.data.userId == request.auth.uid
+            || isAdmin()
+            || request.resource.data.type == 'transfer');
     }
   }
 }
 
-Keep these rules in sync with your Firebase console (Firestore > Rules), since the app cannot update them by itself.
+These rules are version-controlled in firestore.rules at the project root. Keep the file, your Firebase console (Firestore > Rules) and this section in sync by deploying with:
 
-Security note: The current reward flow is suitable for the college-project prototype, but it is not production-grade. The client still runs the award and transfer logic, and a compromised client could attempt malformed writes. A production implementation should move reward issuance to a trusted backend/server-side process such as Cloud Functions.
+firebase deploy --only firestore:rules
+
+Security note: The current reward flow is suitable for the college-project prototype, but it is not production-grade. The client still runs the award and transfer logic, user profiles are readable by any signed-in student because the transfer lookup needs it, and a compromised client could attempt malformed writes within the allowed fields. A production implementation should move reward issuance to a trusted backend/server-side process such as Cloud Functions.
 
 Project Structure
 
@@ -483,6 +497,9 @@ CampusPay/
 │
 ├── build.gradle.kts
 ├── settings.gradle.kts
+├── firestore.rules
+├── firestore.indexes.json
+├── firebase.json
 ├── gradlew
 ├── gradlew.bat
 └── README.md
@@ -516,6 +533,11 @@ Authentication
 Cloud Firestore
 
 Email/password authentication must be enabled in Firebase Authentication.
+
+Firestore rules and composite indexes are version-controlled at the project root (firestore.rules, firestore.indexes.json, firebase.json). To push them to Firebase:
+
+firebase login
+firebase deploy --only firestore
 
 Building the Project
 

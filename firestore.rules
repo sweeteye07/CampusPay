@@ -1,0 +1,76 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.role in ['admin', 'organizer'];
+    }
+
+    match /users/{userId} {
+      // Profiles must be readable by any signed-in student: SendMoney
+      // looks recipients up with a list query on email and reads the
+      // recipient document inside the transfer transaction, which an
+      // own-uid-only rule would deny.
+      allow read: if signedIn();
+
+      // A client may only create its own profile as a starting student,
+      // so nobody can sign up with role "admin" or a preset balance.
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'student'
+        && request.resource.data.credits == 0;
+
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['name', 'email']);
+
+      // Organizers may only adjust the balance fields after attendance
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['credits', 'lastEventId']);
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin();
+    }
+
+    match /registrations/{registrationId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /attendance/{attendanceId} {
+      allow create: if signedIn()
+        && (request.resource.data.userId == request.auth.uid
+            || isAdmin());
+
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Only your own ledger entries, an organizer's entries, or
+      // transfer records may be written, so nobody can forge
+      // "earn" entries into another student's history.
+      allow create: if signedIn()
+        && (request.resource.data.userId == request.auth.uid
+            || isAdmin()
+            || request.resource.data.type == 'transfer');
+    }
+  }
+}
