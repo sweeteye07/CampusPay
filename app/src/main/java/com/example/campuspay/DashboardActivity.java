@@ -66,6 +66,16 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        MaterialButton btnProfile = findViewById(R.id.btnProfile);
+
+        btnProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    ProfileActivity.class
+            );
+            startActivity(intent);
+        });
+
         // Wallet card opens the credit history ledger
         findViewById(R.id.cardWallet).setOnClickListener(v -> {
             Intent intent = new Intent(

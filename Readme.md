@@ -74,6 +74,16 @@ Role
 
 Campus Credits
 
+The profile screen opens from the avatar button on the dashboard and shows:
+
+Avatar initials, display name, email and role badge
+
+Current credit balance
+
+Activity stats: events registered, events attended and total credits earned
+
+The display name can be edited from the profile screen.
+
 Campus Events
 
 Students can:
@@ -434,6 +444,7 @@ CampusPay/
 │   │       │   ├── MyEventsActivity.java
 │   │       │   ├── ScanQRActivity.java
 │   │       │   ├── MyQRActivity.java
+│   │       │   ├── ProfileActivity.java
 │   │       │   ├── CreateEventActivity.java
 │   │       │   ├── SendMoneyActivity.java
 │   │       │   ├── ReceiveMoneyActivity.java
@@ -453,6 +464,7 @@ CampusPay/
 │   │       │       ├── activity_events.xml
 │   │       │       ├── activity_my_events.xml
 │   │       │       ├── activity_my_qr.xml
+│   │       │       ├── activity_profile.xml
 │   │       │       ├── activity_create_event.xml
 │   │       │       ├── activity_send_money.xml
 │   │       │       ├── activity_receive_money.xml
