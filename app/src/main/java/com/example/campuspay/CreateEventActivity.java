@@ -17,6 +17,8 @@ import java.util.Map;
 
 public class CreateEventActivity extends AppCompatActivity {
 
+    public static final String EXTRA_EVENT_ID = "eventId";
+
     private TextInputLayout tilTitle;
     private TextInputLayout tilDescription;
     private TextInputLayout tilCredits;
@@ -27,8 +29,12 @@ public class CreateEventActivity extends AppCompatActivity {
     private TextInputEditText etCredits;
     private TextInputEditText etDate;
 
+    private MaterialButton btnPublish;
+
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
+
+    private String editEventId = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,8 +58,49 @@ public class CreateEventActivity extends AppCompatActivity {
         etCredits = findViewById(R.id.etEventCredits);
         etDate = findViewById(R.id.etEventDate);
 
-        MaterialButton btnPublish = findViewById(R.id.btnPublishEvent);
+        btnPublish = findViewById(R.id.btnPublishEvent);
+
+        editEventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
+        boolean isEdit = editEventId != null && !editEventId.isEmpty();
+
+        if (isEdit) {
+            toolbar.setTitle("Edit Event");
+            btnPublish.setText("Save Changes");
+            btnPublish.setEnabled(false);
+            loadEventForEdit(editEventId);
+        }
+
         btnPublish.setOnClickListener(v -> publishEvent());
+    }
+
+    /** Pre-fill the form when opened from Manage Events. */
+    private void loadEventForEdit(String eventId) {
+        db.collection("events")
+                .document(eventId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        Toast.makeText(this, "Event not found",
+                                Toast.LENGTH_SHORT).show();
+                        finish();
+                        return;
+                    }
+                    if (etTitle.getText() == null) {
+                        return;
+                    }
+                    etTitle.setText(doc.getString("title"));
+                    etDescription.setText(doc.getString("description"));
+                    Long credits = doc.getLong("credits");
+                    etCredits.setText(credits != null ? String.valueOf(credits) : "");
+                    etDate.setText(doc.getString("date"));
+                    btnPublish.setEnabled(true);
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this,
+                            "Could not load event: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                    finish();
+                });
     }
 
     private void publishEvent() {
@@ -73,6 +120,12 @@ public class CreateEventActivity extends AppCompatActivity {
 
         if (title.isEmpty()) {
             tilTitle.setError("Title is required");
+            etTitle.requestFocus();
+            return;
+        }
+
+        if (title.length() > 100) {
+            tilTitle.setError("Title cannot exceed 100 characters");
             etTitle.requestFocus();
             return;
         }
@@ -111,6 +164,12 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
+        boolean isEdit = editEventId != null && !editEventId.isEmpty();
+        if (isEdit) {
+            updateEvent(title, description, credits, date);
+            return;
+        }
+
         String creatorId = mAuth.getCurrentUser() != null
                 ? mAuth.getCurrentUser().getUid() : null;
 
@@ -139,5 +198,31 @@ public class CreateEventActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG
                         ).show()
                 );
+    }
+
+    /** Update path for Manage Events -> Edit. Keeps createdBy/createdAt intact. */
+    private void updateEvent(String title, String description, long credits, String date) {
+        btnPublish.setEnabled(false);
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("title", title);
+        updates.put("description", description);
+        updates.put("credits", credits);
+        updates.put("date", date);
+
+        db.collection("events")
+                .document(editEventId)
+                .update(updates)
+                .addOnSuccessListener(unused -> {
+                    Toast.makeText(this, "Event updated",
+                            Toast.LENGTH_SHORT).show();
+                    finish();
+                })
+                .addOnFailureListener(e -> {
+                    btnPublish.setEnabled(true);
+                    Toast.makeText(this,
+                            "Update failed: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
     }
 }
