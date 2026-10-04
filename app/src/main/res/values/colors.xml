@@ -40,4 +40,6 @@
     <!-- Semantic -->
     <color name="success">#16A34A</color>
     <color name="success_container">#DCFCE7</color>
+    <color name="danger">#DC2626</color>
+    <color name="danger_container">#FEE2E2</color>
 </resources>

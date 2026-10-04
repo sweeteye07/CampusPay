@@ -23,7 +23,12 @@ public class HistoryActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
 
     private RecyclerView recyclerView;
+    private View emptyContainer;
     private TextView tvEmpty;
+
+    private TextView tvTotalIn;
+    private TextView tvTotalOut;
+    private TextView tvNet;
 
     private HistoryAdapter adapter;
 
@@ -43,13 +48,39 @@ public class HistoryActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         recyclerView = findViewById(R.id.historyRecyclerView);
+        emptyContainer = findViewById(R.id.layoutHistoryEmpty);
         tvEmpty = findViewById(R.id.tvHistoryEmpty);
+
+        tvTotalIn = findViewById(R.id.tvHistoryTotalIn);
+        tvTotalOut = findViewById(R.id.tvHistoryTotalOut);
+        tvNet = findViewById(R.id.tvHistoryNet);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         adapter = new HistoryAdapter(items);
         recyclerView.setAdapter(adapter);
 
+        com.google.android.material.chip.ChipGroup chipGroup =
+                findViewById(R.id.chipGroupHistoryFilter);
+        chipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.contains(R.id.chipFilterEarned)) {
+                adapter.setFilter(HistoryAdapter.FILTER_EARNED);
+            } else if (checkedIds.contains(R.id.chipFilterReceived)) {
+                adapter.setFilter(HistoryAdapter.FILTER_RECEIVED);
+            } else if (checkedIds.contains(R.id.chipFilterSent)) {
+                adapter.setFilter(HistoryAdapter.FILTER_SENT);
+            } else if (checkedIds.contains(R.id.chipFilterSpent)) {
+                adapter.setFilter(HistoryAdapter.FILTER_SPENT);
+            } else {
+                adapter.setFilter(HistoryAdapter.FILTER_ALL);
+            }
+            updateEmptyState();
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         loadHistory();
     }
 
@@ -81,15 +112,9 @@ public class HistoryActivity extends AppCompatActivity {
                         );
                     }
 
-                    if (items.isEmpty()) {
-                        recyclerView.setVisibility(View.GONE);
-                        tvEmpty.setVisibility(View.VISIBLE);
-                    } else {
-                        tvEmpty.setVisibility(View.GONE);
-                        recyclerView.setVisibility(View.VISIBLE);
-                    }
-
-                    adapter.notifyDataSetChanged();
+                    adapter.setItems(items);
+                    renderSummary();
+                    updateEmptyState();
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(
@@ -99,5 +124,36 @@ public class HistoryActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG
                         ).show()
                 );
+    }
+
+    /** Earned vs spent totals across the full ledger. */
+    private void renderSummary() {
+        long earned = 0;
+        long spent = 0;
+
+        for (CreditTransaction tx : items) {
+            long credits = tx.getCredits() != null ? tx.getCredits() : 0L;
+            if (tx.isEarn() || tx.isReceive()) {
+                earned += credits;
+            } else if (tx.isOutgoing()) {
+                spent += credits;
+            }
+        }
+
+        tvTotalIn.setText("+" + earned);
+        tvTotalOut.setText("-" + spent);
+        tvNet.setText(String.valueOf(earned - spent));
+    }
+
+    private void updateEmptyState() {
+        boolean empty = adapter.getItemCount() == 0;
+        emptyContainer.setVisibility(empty ? View.VISIBLE : View.GONE);
+        recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+        if (empty && !items.isEmpty()) {
+            tvEmpty.setText("Nothing matches this filter.");
+        } else {
+            tvEmpty.setText(
+                    "Attend an event to earn your first credits.");
+        }
     }
 }

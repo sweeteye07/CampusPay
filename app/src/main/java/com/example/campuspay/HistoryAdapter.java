@@ -9,16 +9,63 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 public class HistoryAdapter
         extends RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder> {
 
-    private final List<CreditTransaction> items;
+    public static final int FILTER_ALL = 0;
+    public static final int FILTER_EARNED = 1;
+    public static final int FILTER_RECEIVED = 2;
+    public static final int FILTER_SENT = 3;
+    public static final int FILTER_SPENT = 4;
+
+    private final List<CreditTransaction> allItems = new ArrayList<>();
+    private final List<CreditTransaction> visibleItems = new ArrayList<>();
+    private int filter = FILTER_ALL;
 
     public HistoryAdapter(List<CreditTransaction> items) {
-        this.items = items;
+        setItems(items);
+    }
+
+    public void setItems(List<CreditTransaction> items) {
+        allItems.clear();
+        if (items != null) {
+            allItems.addAll(items);
+        }
+        applyFilter();
+    }
+
+    public void setFilter(int filter) {
+        this.filter = filter;
+        applyFilter();
+    }
+
+    private void applyFilter() {
+        visibleItems.clear();
+        for (CreditTransaction item : allItems) {
+            if (filter == FILTER_ALL || matches(item)) {
+                visibleItems.add(item);
+            }
+        }
+        notifyDataSetChanged();
+    }
+
+    private boolean matches(CreditTransaction item) {
+        switch (filter) {
+            case FILTER_EARNED:
+                return item.isEarn();
+            case FILTER_RECEIVED:
+                return item.isReceive();
+            case FILTER_SENT:
+                return item.isSend();
+            case FILTER_SPENT:
+                return item.isSpend();
+            default:
+                return true;
+        }
     }
 
     @NonNull
@@ -38,13 +85,15 @@ public class HistoryAdapter
             @NonNull HistoryViewHolder holder,
             int position
     ) {
-        CreditTransaction item = items.get(position);
+        CreditTransaction item = visibleItems.get(position);
 
         String description = item.getDescription();
 
         if (description == null || description.isEmpty()) {
             if (item.isEarn() && item.getEventTitle() != null) {
                 description = "Earned for " + item.getEventTitle();
+            } else if (item.isSpend() && item.getItemTitle() != null) {
+                description = "Redeemed " + item.getItemTitle();
             } else if (item.isSend()) {
                 String to = item.getCounterpartyEmail() != null
                         ? item.getCounterpartyEmail() : "student";
@@ -83,20 +132,54 @@ public class HistoryAdapter
             holder.tvAmount.setTextColor(0xFF2E7D32);
         }
 
+        bindTypeBadge(holder, item);
+    }
+
+    /** Colored icon + pill per transaction type. */
+    private void bindTypeBadge(HistoryViewHolder holder, CreditTransaction item) {
+        int icon;
+        int tint;
+        int pillBg;
+        int pillText;
+        String label;
+
         if (item.isEarn()) {
-            holder.ivIcon.setImageResource(R.drawable.ic_event);
-        } else if (item.isSend()) {
-            holder.ivIcon.setImageResource(R.drawable.ic_logout);
+            icon = R.drawable.ic_event;
+            tint = 0xFF2E7D32;
+            pillBg = R.drawable.bg_pill_success;
+            pillText = 0xFF2E7D32;
+            label = "EARNED";
         } else if (item.isReceive()) {
-            holder.ivIcon.setImageResource(R.drawable.ic_wallet);
+            icon = R.drawable.ic_wallet;
+            tint = 0xFF2E7D32;
+            pillBg = R.drawable.bg_pill_success;
+            pillText = 0xFF2E7D32;
+            label = "RECEIVED";
+        } else if (item.isSpend()) {
+            icon = R.drawable.ic_wallet;
+            tint = 0xFFC62828;
+            pillBg = R.drawable.bg_pill_danger;
+            pillText = 0xFFC62828;
+            label = "REDEEMED";
         } else {
-            holder.ivIcon.setImageResource(R.drawable.ic_wallet);
+            icon = R.drawable.ic_logout;
+            tint = 0xFFC62828;
+            pillBg = R.drawable.bg_pill_danger;
+            pillText = 0xFFC62828;
+            label = "SENT";
         }
+
+        holder.ivIcon.setImageResource(icon);
+        holder.ivIcon.setImageTintList(
+                android.content.res.ColorStateList.valueOf(tint));
+        holder.tvPill.setText(label);
+        holder.tvPill.setBackgroundResource(pillBg);
+        holder.tvPill.setTextColor(pillText);
     }
 
     @Override
     public int getItemCount() {
-        return items.size();
+        return visibleItems.size();
     }
 
     static class HistoryViewHolder extends RecyclerView.ViewHolder {
@@ -105,6 +188,7 @@ public class HistoryAdapter
         final TextView tvDescription;
         final TextView tvDate;
         final TextView tvAmount;
+        final TextView tvPill;
 
         HistoryViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -113,6 +197,7 @@ public class HistoryAdapter
             tvDescription = itemView.findViewById(R.id.tvHistoryDescription);
             tvDate = itemView.findViewById(R.id.tvHistoryDate);
             tvAmount = itemView.findViewById(R.id.tvHistoryAmount);
+            tvPill = itemView.findViewById(R.id.tvHistoryPill);
         }
     }
 }
