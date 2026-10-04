@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -50,14 +53,48 @@
             android:name=".CreateEventActivity"
             android:exported="false" />
         <activity
+            android:name=".MarketplaceActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CreateItemActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MyOrdersActivity"
+            android:exported="false" />
+        <activity
+            android:name=".OrderQRActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ScanPickupActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false" />
+        <activity
             android:name=".SendMoneyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ConfirmPaymentActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PaymentSuccessActivity"
             android:exported="false" />
         <activity
             android:name=".ReceiveMoneyActivity"
             android:exported="false" />
         <activity
+            android:name=".NotificationsActivity"
+            android:exported="false" />
+        <activity
             android:name=".ProfileActivity"
             android:exported="false" />
+
+        <receiver
+            android:name=".EventReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="com.example.campuspay.DAILY_REMINDER" />
+            </intent-filter>
+        </receiver>
     </application>
 
 

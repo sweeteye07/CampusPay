@@ -24,6 +24,16 @@ public class SendMoneyActivity extends AppCompatActivity {
     private TextInputEditText etSendAmount;
     private MaterialButton btnSendCredits;
 
+    private final androidx.activity.result.ActivityResultLauncher<android.content.Intent>
+            confirmLauncher = registerForActivityResult(
+            new androidx.activity.result.contract.ActivityResultContracts
+                    .StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    finish();
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -106,8 +116,9 @@ public class SendMoneyActivity extends AppCompatActivity {
     }
 
     private void onRecipientFound(QuerySnapshot querySnapshot) {
+        btnSendCredits.setEnabled(true);
+
         if (querySnapshot.isEmpty()) {
-            btnSendCredits.setEnabled(true);
             tilRecipientEmail.setError("No student found with this email");
             return;
         }
@@ -115,127 +126,21 @@ public class SendMoneyActivity extends AppCompatActivity {
         DocumentSnapshot recipientDoc = querySnapshot.getDocuments().get(0);
         String recipientId = recipientDoc.getId();
         String recipientEmail = recipientDoc.getString("email");
+        String recipientName = recipientDoc.getString("name");
         String amountText = etSendAmount.getText() != null
                 ? etSendAmount.getText().toString().trim()
                 : "";
         long amount = Long.parseLong(amountText);
 
-        runTransferTransaction(mAuth.getCurrentUser().getUid(), recipientId,
-                recipientEmail, amount);
-    }
-
-    private void runTransferTransaction(
-            String senderId,
-            String recipientId,
-            String recipientEmail,
-            long amount
-    ) {
-        com.google.firebase.firestore.DocumentReference senderRef =
-                db.collection("users").document(senderId);
-        com.google.firebase.firestore.DocumentReference recipientRef =
-                db.collection("users").document(recipientId);
-
-        db.runTransaction(transaction -> {
-                    DocumentSnapshot senderSnapshot =
-                            transaction.get(senderRef);
-                    DocumentSnapshot recipientSnapshot =
-                            transaction.get(recipientRef);
-
-                    if (!senderSnapshot.exists()
-                            || !recipientSnapshot.exists()) {
-                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
-                                "Student profile not found",
-                                com.google.firebase.firestore.FirebaseFirestoreException
-                                        .Code.NOT_FOUND
-                        );
-                    }
-
-                    if (senderId.equals(recipientId)) {
-                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
-                                "You cannot send credits to yourself",
-                                com.google.firebase.firestore.FirebaseFirestoreException
-                                        .Code.FAILED_PRECONDITION
-                        );
-                    }
-
-                    Long senderBalance = senderSnapshot.getLong("credits");
-                    long balance = senderBalance != null ? senderBalance : 0L;
-
-                    if (balance < amount) {
-                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
-                                "Insufficient balance. You have "
-                                        + balance + " credits.",
-                                com.google.firebase.firestore.FirebaseFirestoreException
-                                        .Code.FAILED_PRECONDITION
-                        );
-                    }
-
-                    String senderEmail =
-                            mAuth.getCurrentUser().getEmail() != null
-                                    ? mAuth.getCurrentUser().getEmail()
-                                            .toLowerCase()
-                                    : "student";
-
-                    transaction.update(senderRef, "credits",
-                            com.google.firebase.firestore.FieldValue
-                                    .increment(-amount));
-                    transaction.update(recipientRef, "credits",
-                            com.google.firebase.firestore.FieldValue
-                                    .increment(amount));
-
-                    com.google.firebase.firestore.DocumentReference outRef =
-                            db.collection("transactions").document();
-                    java.util.Map<String, Object> outLedger =
-                            new java.util.HashMap<>();
-                    outLedger.put("type", "transfer");
-                    outLedger.put("direction", "out");
-                    outLedger.put("userId", senderId);
-                    outLedger.put("counterpartyEmail", recipientEmail);
-                    outLedger.put("credits", amount);
-                    outLedger.put("description",
-                            "Sent " + amount + " credits to "
-                                    + recipientEmail);
-                    outLedger.put("createdAt",
-                            com.google.firebase.firestore.FieldValue
-                                    .serverTimestamp());
-                    transaction.set(outRef, outLedger);
-
-                    com.google.firebase.firestore.DocumentReference inRef =
-                            db.collection("transactions").document();
-                    java.util.Map<String, Object> inLedger =
-                            new java.util.HashMap<>();
-                    inLedger.put("type", "transfer");
-                    inLedger.put("direction", "in");
-                    inLedger.put("userId", recipientId);
-                    inLedger.put("counterpartyEmail", senderEmail);
-                    inLedger.put("credits", amount);
-                    inLedger.put("description",
-                            "Received " + amount + " credits from "
-                                    + senderEmail);
-                    inLedger.put("createdAt",
-                            com.google.firebase.firestore.FieldValue
-                                    .serverTimestamp());
-                    transaction.set(inRef, inLedger);
-
-                    return amount;
-                })
-                .addOnSuccessListener(sent -> {
-                    btnSendCredits.setEnabled(true);
-                    android.widget.Toast.makeText(
-                                    this,
-                                    "Sent " + sent + " credits to "
-                                            + recipientEmail,
-                                    android.widget.Toast.LENGTH_LONG
-                            ).show();
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    btnSendCredits.setEnabled(true);
-                    android.widget.Toast.makeText(
-                            this,
-                            "Transfer failed: " + e.getMessage(),
-                            android.widget.Toast.LENGTH_LONG
-                    ).show();
-                });
+        android.content.Intent intent =
+                new android.content.Intent(this, ConfirmPaymentActivity.class);
+        intent.putExtra(ConfirmPaymentActivity.EXTRA_RECIPIENT_ID,
+                recipientId);
+        intent.putExtra(ConfirmPaymentActivity.EXTRA_RECIPIENT_EMAIL,
+                recipientEmail);
+        intent.putExtra(ConfirmPaymentActivity.EXTRA_RECIPIENT_NAME,
+                recipientName);
+        intent.putExtra(ConfirmPaymentActivity.EXTRA_AMOUNT, amount);
+        confirmLauncher.launch(intent);
     }
 }
