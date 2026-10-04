@@ -14,25 +14,65 @@
         android:orientation="vertical"
         android:padding="24dp">
 
-        <TextView
-            android:id="@+id/tvWelcome"
-            android:layout_width="wrap_content"
+        <!-- Top bar: greeting + notifications + profile -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Welcome"
-            android:textColor="@color/text_primary"
-            android:textSize="26sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Your credits, events and check-ins in one place."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-        <!-- Balance hero card -->
+                <TextView
+                    android:id="@+id/tvWelcome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Welcome"
+                    android:textColor="@color/text_primary"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Ready to earn today?"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNotifications"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Notifications"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                app:icon="@drawable/ic_bell"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_primary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProfile"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="Profile"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                app:icon="@drawable/ic_profile"
+                app:iconSize="24dp"
+                app:iconTint="@color/text_primary" />
+        </LinearLayout>
+
+        <!-- Wallet hero card (tappable -> history) -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardWallet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
@@ -109,9 +149,40 @@
                     android:text="Attend events and scan QR codes to earn more."
                     android:textColor="#D9DCFF"
                     android:textSize="13sp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:background="#33FFFFFF" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="View credit history"
+                        android:textColor="@android:color/white"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="View credit history"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@android:color/white" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Quick actions: Send / Receive / Scan QR -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -121,21 +192,62 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Campus Events row -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CampusPay.Card"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:weightSum="3">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnEvents"
-                style="@style/Widget.CampusPay.RowAction"
-                android:layout_width="match_parent"
+                android:id="@+id/btnSendMoney"
+                style="@style/Widget.CampusPay.QuickAction"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Campus Events"
-                app:icon="@drawable/ic_event" />
-        </com.google.android.material.card.MaterialCardView>
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="Send"
+                app:icon="@drawable/ic_send" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReceiveMoney"
+                style="@style/Widget.CampusPay.QuickAction"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="Receive"
+                app:icon="@drawable/ic_receive" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScanQR"
+                style="@style/Widget.CampusPay.QuickAction"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Scan QR"
+                app:icon="@drawable/ic_qr" />
+        </LinearLayout>
+
+        <!-- Events -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:text="Events"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Campus Events (featured) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEvents"
+            style="@style/Widget.CampusPay.FeaturedAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Campus Events"
+            app:icon="@drawable/ic_event" />
 
         <!-- My Events row -->
         <com.google.android.material.card.MaterialCardView
@@ -151,70 +263,6 @@
                 android:layout_height="wrap_content"
                 android:text="My Events"
                 app:icon="@drawable/ic_event" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Scan QR row -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CampusPay.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnScanQR"
-                style="@style/Widget.CampusPay.RowAction"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Scan Event QR"
-                app:icon="@drawable/ic_qr" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Credit history row -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CampusPay.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnHistory"
-                style="@style/Widget.CampusPay.RowAction"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Credit History"
-                app:icon="@drawable/ic_wallet" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Send credits row -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CampusPay.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSendMoney"
-                style="@style/Widget.CampusPay.RowAction"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Send Credits"
-                app:icon="@drawable/ic_logout" />
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Receive credits row -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CampusPay.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnReceiveMoney"
-                style="@style/Widget.CampusPay.RowAction"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Receive Credits"
-                app:icon="@drawable/ic_qr" />
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton

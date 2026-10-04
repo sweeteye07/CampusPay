@@ -42,8 +42,6 @@ public class DashboardActivity extends AppCompatActivity {
 
         MaterialButton btnScanQR = findViewById(R.id.btnScanQR);
 
-        MaterialButton btnHistory = findViewById(R.id.btnHistory);
-
         MaterialButton btnSendMoney = findViewById(R.id.btnSendMoney);
 
         MaterialButton btnReceiveMoney = findViewById(R.id.btnReceiveMoney);
@@ -64,7 +62,8 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        btnHistory.setOnClickListener(v -> {
+        // Wallet card opens the credit history ledger
+        findViewById(R.id.cardWallet).setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,
                     HistoryActivity.class
