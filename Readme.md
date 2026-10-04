@@ -56,6 +56,8 @@ Student registration
 
 Email/password login
 
+Forgot password by email (Firebase sends the reset link)
+
 Firebase Authentication
 
 Automatic session detection
