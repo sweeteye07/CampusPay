@@ -104,6 +104,8 @@ Prevent duplicate registration
 
 View registered events
 
+Organizers (role = admin) additionally get a Create Event button on the dashboard, so events can be published from the app instead of the Firebase console.
+
 QR Attendance
 
 Each student has a personal QR code shown on the My QR screen.
@@ -506,9 +508,11 @@ Open Campus Events.
 
 Register for an event.
 
-In the Firebase console, create an event with a credit value, and set a second account's role field to admin.
+In the Firebase console, set a second account's role field to admin.
 
 Log in as the organizer account.
+
+Create an event with a credit value from the dashboard.
 
 Tap Scan on the dashboard and select the event.
 

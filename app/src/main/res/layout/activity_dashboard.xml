@@ -46,18 +46,6 @@
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnNotifications"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="Notifications"
-                android:insetLeft="0dp"
-                android:insetRight="0dp"
-                app:icon="@drawable/ic_bell"
-                app:iconSize="24dp"
-                app:iconTint="@color/text_primary" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnProfile"
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="48dp"
@@ -262,6 +250,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="My Events"
+                app:icon="@drawable/ic_event" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Create Event row (organizers only, hidden until role loads) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardCreateEvent"
+            style="@style/Widget.CampusPay.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCreateEvent"
+                style="@style/Widget.CampusPay.RowAction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Create Event"
                 app:icon="@drawable/ic_event" />
         </com.google.android.material.card.MaterialCardView>
 
