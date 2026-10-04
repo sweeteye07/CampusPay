@@ -97,14 +97,52 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:hint="Date (e.g. 2026-10-20)"
+                android:hint="Event day and time"
                 app:startIconDrawable="@drawable/ic_event">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etEventDate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
+                    android:cursorVisible="false"
+                    android:focusable="false"
+                    android:inputType="none"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilEventDeadline"
+                style="@style/Widget.CampusPay.InputLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:hint="Registration deadline day and time"
+                app:startIconDrawable="@drawable/ic_event">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etEventDeadline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:cursorVisible="false"
+                    android:focusable="false"
+                    android:inputType="none"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilEventCapacity"
+                style="@style/Widget.CampusPay.InputLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:hint="Seat capacity (e.g. 50)"
+                app:startIconDrawable="@drawable/ic_event">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etEventCapacity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
                     android:maxLines="1" />
             </com.google.android.material.textfield.TextInputLayout>
 

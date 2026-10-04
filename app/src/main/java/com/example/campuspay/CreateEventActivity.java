@@ -23,11 +23,15 @@ public class CreateEventActivity extends AppCompatActivity {
     private TextInputLayout tilDescription;
     private TextInputLayout tilCredits;
     private TextInputLayout tilDate;
+    private TextInputLayout tilDeadline;
+    private TextInputLayout tilCapacity;
 
     private TextInputEditText etTitle;
     private TextInputEditText etDescription;
     private TextInputEditText etCredits;
     private TextInputEditText etDate;
+    private TextInputEditText etDeadline;
+    private TextInputEditText etCapacity;
 
     private MaterialButton btnPublish;
 
@@ -35,6 +39,8 @@ public class CreateEventActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
 
     private String editEventId = null;
+    private long editRegisteredCount = 0;
+    private long selectedDeadlineMillis = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,11 +58,18 @@ public class CreateEventActivity extends AppCompatActivity {
         tilDescription = findViewById(R.id.tilEventDescription);
         tilCredits = findViewById(R.id.tilEventCredits);
         tilDate = findViewById(R.id.tilEventDate);
+        tilDeadline = findViewById(R.id.tilEventDeadline);
+        tilCapacity = findViewById(R.id.tilEventCapacity);
 
         etTitle = findViewById(R.id.etEventTitle);
         etDescription = findViewById(R.id.etEventDescription);
         etCredits = findViewById(R.id.etEventCredits);
         etDate = findViewById(R.id.etEventDate);
+        etDeadline = findViewById(R.id.etEventDeadline);
+        etCapacity = findViewById(R.id.etEventCapacity);
+
+        etDate.setOnClickListener(v -> showDateTimePicker(false));
+        etDeadline.setOnClickListener(v -> showDateTimePicker(true));
 
         btnPublish = findViewById(R.id.btnPublishEvent);
 
@@ -71,6 +84,43 @@ public class CreateEventActivity extends AppCompatActivity {
         }
 
         btnPublish.setOnClickListener(v -> publishEvent());
+    }
+
+    /**
+     * Date list first, then a 12-hour time list with AM/PM.
+     * forDeadline picks the registration deadline, otherwise the
+     * event day and time shown on the listing.
+     */
+    private void showDateTimePicker(boolean forDeadline) {
+        java.util.Calendar now = java.util.Calendar.getInstance();
+
+        new android.app.DatePickerDialog(
+                this,
+                (view, year, month, day) ->
+                    new android.app.TimePickerDialog(
+                            CreateEventActivity.this,
+                            (timeView, hourOfDay, minute) -> {
+                                long millis =
+                                        EventDeadline.combineDateTimeMillis(
+                                                year, month, day,
+                                                hourOfDay, minute);
+                                String text =
+                                        EventDeadline.formatDateTime(millis);
+                                if (forDeadline) {
+                                    etDeadline.setText(text);
+                                    selectedDeadlineMillis = millis;
+                                    tilDeadline.setError(null);
+                                } else {
+                                    etDate.setText(text);
+                                    tilDate.setError(null);
+                                }
+                            },
+                            now.get(java.util.Calendar.HOUR_OF_DAY),
+                            now.get(java.util.Calendar.MINUTE),
+                            false).show(),
+                now.get(java.util.Calendar.YEAR),
+                now.get(java.util.Calendar.MONTH),
+                now.get(java.util.Calendar.DAY_OF_MONTH)).show();
     }
 
     /** Pre-fill the form when opened from Manage Events. */
@@ -93,6 +143,20 @@ public class CreateEventActivity extends AppCompatActivity {
                     Long credits = doc.getLong("credits");
                     etCredits.setText(credits != null ? String.valueOf(credits) : "");
                     etDate.setText(doc.getString("date"));
+                    com.google.firebase.Timestamp deadline =
+                            doc.getTimestamp("deadline");
+                    if (deadline != null) {
+                        selectedDeadlineMillis =
+                                deadline.toDate().getTime();
+                        etDeadline.setText(EventDeadline.formatDateTime(
+                                selectedDeadlineMillis));
+                    } else {
+                        etDeadline.setText("");
+                    }
+                    Long capacity = doc.getLong("capacity");
+                    etCapacity.setText(capacity != null ? String.valueOf(capacity) : "");
+                    Long count = doc.getLong("registeredCount");
+                    editRegisteredCount = count != null ? count : 0;
                     btnPublish.setEnabled(true);
                 })
                 .addOnFailureListener(e -> {
@@ -112,11 +176,15 @@ public class CreateEventActivity extends AppCompatActivity {
                 ? etCredits.getText().toString().trim() : "";
         String date = etDate.getText() != null
                 ? etDate.getText().toString().trim() : "";
+        String capacityRaw = etCapacity.getText() != null
+                ? etCapacity.getText().toString().trim() : "";
 
         tilTitle.setError(null);
         tilDescription.setError(null);
         tilCredits.setError(null);
         tilDate.setError(null);
+        tilDeadline.setError(null);
+        tilCapacity.setError(null);
 
         if (title.isEmpty()) {
             tilTitle.setError("Title is required");
@@ -164,9 +232,45 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
+        long deadlineMillis = selectedDeadlineMillis;
+        if (deadlineMillis <= 0) {
+            tilDeadline.setError("Pick a deadline day and time");
+            return;
+        }
+
+        long capacity;
+        try {
+            capacity = Long.parseLong(capacityRaw);
+        } catch (NumberFormatException e) {
+            tilCapacity.setError("Enter a valid number");
+            etCapacity.requestFocus();
+            return;
+        }
+
+        if (capacity < 1 || capacity > 1000) {
+            tilCapacity.setError("Capacity must be between 1 and 1000");
+            etCapacity.requestFocus();
+            return;
+        }
+
         boolean isEdit = editEventId != null && !editEventId.isEmpty();
+
+        if (!isEdit && deadlineMillis <= System.currentTimeMillis()) {
+            tilDeadline.setError("Deadline must be in the future");
+            etDeadline.requestFocus();
+            return;
+        }
+
+        if (isEdit && capacity < editRegisteredCount) {
+            tilCapacity.setError("Cannot go below "
+                    + editRegisteredCount + " registered");
+            etCapacity.requestFocus();
+            return;
+        }
+
         if (isEdit) {
-            updateEvent(title, description, credits, date);
+            updateEvent(title, description, credits, date,
+                    deadlineMillis, capacity);
             return;
         }
 
@@ -180,6 +284,11 @@ public class CreateEventActivity extends AppCompatActivity {
         event.put("date", date);
         event.put("createdBy", creatorId);
         event.put("createdAt", FieldValue.serverTimestamp());
+        event.put("deadline",
+                new com.google.firebase.Timestamp(
+                        new java.util.Date(deadlineMillis)));
+        event.put("capacity", capacity);
+        event.put("registeredCount", 0L);
 
         db.collection("events")
                 .add(event)
@@ -201,7 +310,8 @@ public class CreateEventActivity extends AppCompatActivity {
     }
 
     /** Update path for Manage Events -> Edit. Keeps createdBy/createdAt intact. */
-    private void updateEvent(String title, String description, long credits, String date) {
+    private void updateEvent(String title, String description, long credits,
+            String date, long deadlineMillis, long capacity) {
         btnPublish.setEnabled(false);
 
         Map<String, Object> updates = new HashMap<>();
@@ -209,6 +319,12 @@ public class CreateEventActivity extends AppCompatActivity {
         updates.put("description", description);
         updates.put("credits", credits);
         updates.put("date", date);
+        updates.put("deadline",
+                new com.google.firebase.Timestamp(
+                        new java.util.Date(deadlineMillis)));
+        updates.put("capacity", capacity);
+        // Backfill the counter on legacy events edited for the first time.
+        updates.put("registeredCount", editRegisteredCount);
 
         db.collection("events")
                 .document(editEventId)

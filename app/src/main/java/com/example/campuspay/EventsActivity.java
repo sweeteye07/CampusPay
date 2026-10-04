@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -158,13 +159,20 @@ public class EventsActivity extends AppCompatActivity
 
                     querySnapshot.getDocuments().forEach(document -> {
 
+                        com.google.firebase.Timestamp deadline =
+                                document.getTimestamp("deadline");
+
                         Event event = new Event(
                                 document.getId(),
                                 document.getString("title"),
                                 document.getString("description"),
                                 document.getLong("credits"),
                                 document.getString("date"),
-                                document.getString("createdBy")
+                                document.getString("createdBy"),
+                                deadline != null
+                                        ? deadline.toDate().getTime() : null,
+                                document.getLong("capacity"),
+                                document.getLong("registeredCount")
                         );
 
                         event.setRegistered(
@@ -196,24 +204,95 @@ public class EventsActivity extends AppCompatActivity
             return;
         }
 
+        // Registration is students-only.
+        if (isOrganizer) {
+            Toast.makeText(this, "Registration is for students",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!event.isRegistrationOpen()) {
+            Toast.makeText(this,
+                    "Registration is closed for this event",
+                    Toast.LENGTH_SHORT).show();
+            adapter.notifyDataSetChanged();
+            return;
+        }
+
         String userId = mAuth.getCurrentUser().getUid();
 
         String registrationId =
                 userId + "_" + event.getId();
 
-        Map<String, Object> registration = new HashMap<>();
+        com.google.firebase.firestore.DocumentReference eventRef =
+                db.collection("events").document(event.getId());
+        com.google.firebase.firestore.DocumentReference registrationRef =
+                db.collection("registrations").document(registrationId);
 
-        registration.put("userId", userId);
-        registration.put("eventId", event.getId());
-        registration.put("eventTitle", event.getTitle());
-        registration.put(
-                "registeredAt",
-                FieldValue.serverTimestamp()
-        );
+        // One atomic transaction: re-check deadline + seats against the
+        // latest server state, block duplicates, create the registration
+        // and take one seat. The security rules verify the seat counter
+        // and the deadline again in the same commit.
+        db.runTransaction(transaction -> {
+                    DocumentSnapshot eventSnapshot =
+                            transaction.get(eventRef);
 
-        db.collection("registrations")
-                .document(registrationId)
-                .set(registration)
+                    if (!eventSnapshot.exists()) {
+                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
+                                "Event no longer available",
+                                com.google.firebase.firestore.FirebaseFirestoreException
+                                        .Code.NOT_FOUND);
+                    }
+
+                    com.google.firebase.Timestamp deadline =
+                            eventSnapshot.getTimestamp("deadline");
+                    if (deadline != null
+                            && System.currentTimeMillis()
+                                    > deadline.toDate().getTime()) {
+                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
+                                "Registration deadline has passed",
+                                com.google.firebase.firestore.FirebaseFirestoreException
+                                        .Code.FAILED_PRECONDITION);
+                    }
+
+                    Long capacity = eventSnapshot.getLong("capacity");
+                    if (capacity != null) {
+                        Long count =
+                                eventSnapshot.getLong("registeredCount");
+                        long taken = count != null ? count : 0L;
+                        if (taken >= capacity) {
+                            throw new com.google.firebase.firestore.FirebaseFirestoreException(
+                                    "Event is full",
+                                    com.google.firebase.firestore.FirebaseFirestoreException
+                                            .Code.FAILED_PRECONDITION);
+                        }
+                        transaction.update(eventRef, "registeredCount",
+                                com.google.firebase.firestore.FieldValue
+                                        .increment(1));
+                    }
+
+                    DocumentSnapshot registrationSnapshot =
+                            transaction.get(registrationRef);
+                    if (registrationSnapshot.exists()) {
+                        throw new com.google.firebase.firestore.FirebaseFirestoreException(
+                                "Already registered for this event",
+                                com.google.firebase.firestore.FirebaseFirestoreException
+                                        .Code.ALREADY_EXISTS);
+                    }
+
+                    Map<String, Object> registration = new HashMap<>();
+
+                    registration.put("userId", userId);
+                    registration.put("eventId", event.getId());
+                    registration.put("eventTitle", event.getTitle());
+                    registration.put(
+                            "registeredAt",
+                            FieldValue.serverTimestamp()
+                    );
+
+                    transaction.set(registrationRef, registration);
+                    return null;
+                })
                 .addOnSuccessListener(unused -> {
 
                     event.setRegistered(true);

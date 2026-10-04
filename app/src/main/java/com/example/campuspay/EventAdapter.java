@@ -73,17 +73,59 @@ public class EventAdapter
         );
         holder.tvDate.setText(event.getDate());
 
-        if (event.isRegistered()) {
-            holder.btnRegister.setText("Registered");
-            holder.btnRegister.setEnabled(false);
+        long now = System.currentTimeMillis();
+        long deadline = event.getDeadlineMillis() != null
+                ? event.getDeadlineMillis() : -1L;
+        long capacity = event.getCapacity() != null
+                ? event.getCapacity() : -1L;
+        long taken = event.getRegisteredCount();
+
+        boolean open = EventDeadline.isRegistrationOpen(deadline, now);
+        boolean seatsLeft = EventDeadline.hasSeatsLeft(capacity, taken);
+
+        if (capacity < 0 && deadline < 0) {
+            holder.tvMeta.setVisibility(View.GONE);
         } else {
-            holder.btnRegister.setText("Register");
-            holder.btnRegister.setEnabled(true);
+            StringBuilder meta = new StringBuilder();
+            if (deadline >= 0) {
+                meta.append("Closes ")
+                        .append(EventDeadline.formatDateTime(deadline));
+            }
+            if (capacity >= 0) {
+                if (meta.length() > 0) {
+                    meta.append("  •  ");
+                }
+                meta.append(taken).append("/").append(capacity)
+                        .append(" seats");
+            }
+            holder.tvMeta.setText(meta.toString());
+            holder.tvMeta.setVisibility(View.VISIBLE);
         }
 
-        holder.btnRegister.setOnClickListener(
-                v -> listener.onRegister(event)
-        );
+        // Registration is students-only: organizers manage instead.
+        holder.btnRegister.setVisibility(
+                adminMode ? View.GONE : View.VISIBLE);
+        if (!adminMode) {
+            if (event.isRegistered()) {
+                holder.btnRegister.setText("Registered");
+                holder.btnRegister.setEnabled(false);
+            } else if (!open) {
+                holder.btnRegister.setText("Closed");
+                holder.btnRegister.setEnabled(false);
+            } else if (!seatsLeft) {
+                holder.btnRegister.setText("Full");
+                holder.btnRegister.setEnabled(false);
+            } else {
+                holder.btnRegister.setText("Register");
+                holder.btnRegister.setEnabled(true);
+            }
+
+            holder.btnRegister.setOnClickListener(
+                    v -> listener.onRegister(event)
+            );
+        } else {
+            holder.btnRegister.setOnClickListener(null);
+        }
 
         boolean manageable = canManage(event);
         holder.layoutAdminActions.setVisibility(
@@ -109,6 +151,7 @@ public class EventAdapter
         final TextView tvDescription;
         final TextView tvCredits;
         final TextView tvDate;
+        final TextView tvMeta;
         final com.google.android.material.button.MaterialButton btnRegister;
         final View layoutAdminActions;
         final com.google.android.material.button.MaterialButton btnEdit;
@@ -123,6 +166,7 @@ public class EventAdapter
             );
             tvCredits = itemView.findViewById(R.id.tvEventItemCredits);
             tvDate = itemView.findViewById(R.id.tvEventItemDate);
+            tvMeta = itemView.findViewById(R.id.tvEventItemMeta);
             btnRegister = itemView.findViewById(
                     R.id.btnEventItemRegister
             );
