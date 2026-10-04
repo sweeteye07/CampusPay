@@ -56,6 +56,13 @@ public class MyEventsActivity extends AppCompatActivity {
 
     private void loadMyEvents() {
 
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         String userId = mAuth.getCurrentUser().getUid();
 
         db.collection("registrations")

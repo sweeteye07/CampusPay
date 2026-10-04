@@ -51,7 +51,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnCreateAccount.setOnClickListener(v -> {
 
             String name = etName.getText().toString().trim();
-            String email = etEmail.getText().toString().trim();
+            String email = etEmail.getText().toString().trim().toLowerCase();
             String password = etPassword.getText().toString().trim();
 
             tilName.setError(null);
