@@ -8,6 +8,7 @@ public class CreditTransaction {
     private final String type;
     private final String description;
     private final String eventTitle;
+    private final String itemTitle;
     private final Long credits;
     private final String counterpartyEmail;
     private final String direction;
@@ -23,10 +24,26 @@ public class CreditTransaction {
             String direction,
             com.google.firebase.Timestamp createdAt
     ) {
+        this(id, type, description, eventTitle, null, credits,
+                counterpartyEmail, direction, createdAt);
+    }
+
+    public CreditTransaction(
+            String id,
+            String type,
+            String description,
+            String eventTitle,
+            String itemTitle,
+            Long credits,
+            String counterpartyEmail,
+            String direction,
+            com.google.firebase.Timestamp createdAt
+    ) {
         this.id = id;
         this.type = type;
         this.description = description;
         this.eventTitle = eventTitle;
+        this.itemTitle = itemTitle;
         this.credits = credits;
         this.counterpartyEmail = counterpartyEmail;
         this.direction = direction;
@@ -39,6 +56,7 @@ public class CreditTransaction {
                 document.getString("type"),
                 document.getString("description"),
                 document.getString("eventTitle"),
+                document.getString("itemTitle"),
                 document.getLong("credits"),
                 document.getString("counterpartyEmail"),
                 document.getString("direction"),
@@ -60,6 +78,10 @@ public class CreditTransaction {
 
     public String getEventTitle() {
         return eventTitle;
+    }
+
+    public String getItemTitle() {
+        return itemTitle;
     }
 
     public Long getCredits() {
@@ -88,6 +110,10 @@ public class CreditTransaction {
 
     public boolean isReceive() {
         return "transfer".equals(type) && "in".equals(direction);
+    }
+
+    public boolean isSpend() {
+        return "spend".equals(type);
     }
 
     public boolean isOutgoing() {

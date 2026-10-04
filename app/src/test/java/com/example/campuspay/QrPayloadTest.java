@@ -56,4 +56,31 @@ public class QrPayloadTest {
         assertFalse(QrPayload.isValidUserId("emoji😀"));
         assertFalse(QrPayload.isValidUserId(repeat('a', 129)));
     }
+
+    @Test
+    public void recognisesPickupPayload() {
+        assertTrue(QrPayload.isPickupPayload(
+                QrPayload.PICKUP_PREFIX + "AbC123xYz9876543210"));
+        assertFalse(QrPayload.isPickupPayload("https://example.com"));
+        assertFalse(QrPayload.isPickupPayload(
+                QrPayload.STUDENT_PREFIX + "abc123"));
+        assertFalse(QrPayload.isPickupPayload(""));
+        assertFalse(QrPayload.isPickupPayload(null));
+    }
+
+    @Test
+    public void extractsRedemptionIdFromPayload() {
+        assertEquals("AbC123xYz9876543210", QrPayload.redemptionIdFrom(
+                QrPayload.PICKUP_PREFIX + "AbC123xYz9876543210"));
+    }
+
+    @Test
+    public void validatesRedemptionIdFormat() {
+        assertTrue(QrPayload.isValidRedemptionId("AbC123xYz9876543210"));
+        assertFalse(QrPayload.isValidRedemptionId(null));
+        assertFalse(QrPayload.isValidRedemptionId(""));
+        assertFalse(QrPayload.isValidRedemptionId("has space"));
+        assertFalse(QrPayload.isValidRedemptionId("../admin"));
+        assertFalse(QrPayload.isValidRedemptionId(repeat('a', 65)));
+    }
 }
