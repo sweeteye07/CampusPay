@@ -118,7 +118,29 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time;
 
-      allow update, delete: if isAdmin();
+      // Only the owning organizer (or any organizer for owner-less
+      // console events) may edit; createdBy/createdAt are immutable.
+      allow update: if isAdmin()
+        && (!('createdBy' in resource.data)
+            || resource.data.createdBy == request.auth.uid)
+        && request.resource.data.keys().hasOnly(
+             ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.description is string
+        && request.resource.data.credits is int
+        && request.resource.data.credits > 0
+        && request.resource.data.credits <= 10000
+        && request.resource.data.date is string
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      // Same ownership rule for deletes so one organizer
+      // cannot remove another organizer's event.
+      allow delete: if isAdmin()
+        && (!('createdBy' in resource.data)
+            || resource.data.createdBy == request.auth.uid);
     }
 
     match /registrations/{registrationId} {
