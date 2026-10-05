@@ -182,8 +182,9 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Quick actions: Send / Receive -->
+        <!-- Quick actions: Send / Receive / Scan QR (role-gated) -->
         <TextView
+            android:id="@+id/tvQuickActionsLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
@@ -193,11 +194,12 @@
             android:textStyle="bold" />
 
         <LinearLayout
+            android:id="@+id/layoutQuickActions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:orientation="horizontal"
-            android:weightSum="2">
+            android:weightSum="3">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSendMoney"
@@ -214,25 +216,50 @@
                 style="@style/Widget.CampusPay.QuickAction"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:text="Receive"
                 app:icon="@drawable/ic_receive" />
 
-            <!-- Scan hidden for now for both students and organizers.
-                 Will return later: keep the button and its wiring. -->
+            <!-- Scan: staff only, toggled in code. Students and
+                 vendors never see this button (vendors get their own
+                 full-width scan below). -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnScanQR"
                 style="@style/Widget.CampusPay.QuickAction"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Scan QR"
+                android:text="Scan"
                 android:visibility="gone"
                 app:icon="@drawable/ic_qr" />
         </LinearLayout>
 
+        <!-- Vendor scan: vendors only, toggled in code. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVendorScan"
+            style="@style/Widget.CampusPay.FeaturedAction"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Scan Pickup"
+            android:visibility="gone"
+            app:icon="@drawable/ic_qr" />
+
+        <!-- Vendor order history: vendors only, toggled in code. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVendorOrders"
+            style="@style/Widget.CampusPay.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Order History"
+            android:visibility="gone"
+            app:icon="@drawable/ic_history" />
+
         <!-- Events -->
         <TextView
+            android:id="@+id/tvEventsLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="26dp"

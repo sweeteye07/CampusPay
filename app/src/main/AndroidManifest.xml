@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -50,6 +53,9 @@
             android:name=".HistoryActivity"
             android:exported="false" />
         <activity
+            android:name=".TransactionDetailActivity"
+            android:exported="false" />
+        <activity
             android:name=".CreateEventActivity"
             android:exported="false" />
         <activity
@@ -67,6 +73,9 @@
         <activity
             android:name=".ScanPickupActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false" />
+        <activity
+            android:name=".VendorOrdersActivity"
             android:exported="false" />
         <activity
             android:name=".SendMoneyActivity"

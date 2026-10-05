@@ -121,6 +121,11 @@ public class ProfileActivity extends AppCompatActivity {
                 startActivity(new Intent(
                         ProfileActivity.this, ScanQRActivity.class)));
 
+        // Students only: show their own QR for attendance check-in.
+        findViewById(R.id.btnShowMyQR).setOnClickListener(v ->
+                startActivity(new Intent(
+                        ProfileActivity.this, MyQRActivity.class)));
+
         loadProfile();
     }
 
@@ -164,22 +169,40 @@ public class ProfileActivity extends AppCompatActivity {
         String role = doc.getString("role");
         Long credits = doc.getLong("credits");
 
-        boolean organizer = UserRole.isOrganizer(role);
-        isOrganizer = organizer;
+        boolean student = UserRole.isStudent(role);
+        isOrganizer = UserRole.isOrganizer(role);
+
+        // Scanner for organizers, QR display and Your Activity for
+        // students; vendors get none of the three.
+        btnScanAttendance.setVisibility(
+                isOrganizer ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnShowMyQR).setVisibility(
+                student ? View.VISIBLE : View.GONE);
+        cardYourActivity.setVisibility(
+                student ? View.VISIBLE : View.GONE);
 
         currentName = name != null ? name : "";
 
         String nameText = currentName.isEmpty()
                 ? "CampusPay User" : currentName;
         String emailText = email != null ? email : "—";
-        String roleLabel = organizer ? "Organizer" : "Student";
+        String roleLabel;
+        if (UserRole.isAdmin(role)) {
+            roleLabel = "Admin";
+        } else if (UserRole.isStaff(role)) {
+            roleLabel = "Staff";
+        } else if (student) {
+            roleLabel = "Student";
+        } else {
+            roleLabel = "Vendor";
+        }
 
         // The scanner entry point only exists for organizers.
         // Your Activity is the mirror image: students only.
         btnScanAttendance.setVisibility(
                 isOrganizer ? View.VISIBLE : View.GONE);
         cardYourActivity.setVisibility(
-                isOrganizer ? View.GONE : View.VISIBLE);
+                student ? View.VISIBLE : View.GONE);
 
         tvProfileName.setText(nameText);
         tvProfileInitials.setText(initialsOf(currentName));
@@ -192,8 +215,8 @@ public class ProfileActivity extends AppCompatActivity {
                 credits != null ? credits + " Credits" : "0 Credits");
         tvStatBalance.setText(String.valueOf(credits != null ? credits : 0));
 
-        // Students only: organizers skip the activity reads entirely.
-        if (!isOrganizer) {
+        // Students only: staff and vendors skip the activity reads entirely.
+        if (student) {
             loadStats();
         }
     }

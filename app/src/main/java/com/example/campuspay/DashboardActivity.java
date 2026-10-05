@@ -23,7 +23,9 @@ public class DashboardActivity extends AppCompatActivity {
     private TextView tvWelcome;
     private TextView tvBalance;
     private MaterialButton btnScanQR;
+    private MaterialButton btnReceiveMoney;
     private boolean isOrganizer = false;
+    private boolean isVendor = false;
 
     private com.google.firebase.firestore.ListenerRegistration userListener;
     private com.google.firebase.firestore.ListenerRegistration txListener;
@@ -53,7 +55,7 @@ public class DashboardActivity extends AppCompatActivity {
 
         MaterialButton btnSendMoney = findViewById(R.id.btnSendMoney);
 
-        MaterialButton btnReceiveMoney = findViewById(R.id.btnReceiveMoney);
+        btnReceiveMoney = findViewById(R.id.btnReceiveMoney);
 
         btnSendMoney.setOnClickListener(v -> {
             Intent intent = new Intent(
@@ -104,11 +106,22 @@ public class DashboardActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Students show their QR; organizers (role = admin/organizer) scan students
-        btnScanQR.setOnClickListener(v -> {
+        // Staff scan: choose attendance or pickup. Students and vendors
+        // never see this button (vendors get their own scan below).
+        btnScanQR.setOnClickListener(v -> showScanChooser());
+
+        findViewById(R.id.btnVendorScan).setOnClickListener(v -> {
             Intent intent = new Intent(
                     DashboardActivity.this,
-                    isOrganizer ? ScanQRActivity.class : MyQRActivity.class
+                    ScanPickupActivity.class
+            );
+            startActivity(intent);
+        });
+
+        findViewById(R.id.btnVendorOrders).setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    DashboardActivity.this,
+                    VendorOrdersActivity.class
             );
             startActivity(intent);
         });
@@ -136,6 +149,25 @@ public class DashboardActivity extends AppCompatActivity {
             );
             startActivity(intent);
         });
+    }
+
+    /**
+     * Staff scan: attendance or pickup. Students and vendors never
+     * reach here (their buttons stay gone).
+     */
+    private void showScanChooser() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("What to scan?")
+                .setItems(new String[]{"Scan attendance", "Scan pickup"},
+                        (dialog, which) -> {
+                            Intent intent = new Intent(
+                                    DashboardActivity.this,
+                                    which == 0 ? ScanQRActivity.class
+                                            : ScanPickupActivity.class);
+                            startActivity(intent);
+                        })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     // Register in onStart (not onCreate) so the balance refreshes again
@@ -293,6 +325,47 @@ public class DashboardActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Three home screens in one: students get wallet + actions,
+     * staff additionally get scan, vendors get only scan.
+     */
+    private void applyRoleUI() {
+        boolean student = !isOrganizer && !isVendor;
+
+        btnScanQR.setVisibility(isOrganizer ? View.VISIBLE : View.GONE);
+        // Rebalance the row: 3 columns for staff, 2 for students, and
+        // the trailing gap only exists when Scan follows Receive.
+        ((android.widget.LinearLayout) findViewById(R.id.layoutQuickActions))
+                .setWeightSum(isOrganizer ? 3 : 2);
+        android.view.ViewGroup.MarginLayoutParams receiveParams =
+                (android.view.ViewGroup.MarginLayoutParams)
+                        btnReceiveMoney.getLayoutParams();
+        receiveParams.setMarginEnd(isOrganizer
+                ? (int) (8 * getResources().getDisplayMetrics().density)
+                : 0);
+        btnReceiveMoney.setLayoutParams(receiveParams);
+        findViewById(R.id.btnVendorScan).setVisibility(
+                isVendor ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnVendorOrders).setVisibility(
+                isVendor ? View.VISIBLE : View.GONE);
+        findViewById(R.id.layoutQuickActions).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.tvQuickActionsLabel).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.cardWallet).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.tvEventsLabel).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.btnEvents).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.btnMarketplace).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+        findViewById(R.id.cardMyEvents).setVisibility(
+                student ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnNotifications).setVisibility(
+                isVendor ? View.GONE : View.VISIBLE);
+    }
+
     private void startListeningToStudentData() {
 
         if (mAuth.getCurrentUser() == null) {
@@ -321,11 +394,10 @@ public class DashboardActivity extends AppCompatActivity {
                         isOrganizer = UserRole.isOrganizer(
                                 documentSnapshot.getString("role")
                         );
-                        btnScanQR.setText(isOrganizer ? "Scan" : "My QR");
-
-                        // My Events is students-only.
-                        findViewById(R.id.cardMyEvents).setVisibility(
-                                isOrganizer ? View.GONE : View.VISIBLE);
+                        isVendor = UserRole.isVendor(
+                                documentSnapshot.getString("role")
+                        );
+                        applyRoleUI();
 
                         if (name != null) {
                             tvWelcome.setText("Welcome, " + name);

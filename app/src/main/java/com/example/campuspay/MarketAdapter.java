@@ -22,6 +22,8 @@ public class MarketAdapter
     private final List<MarketItem> items;
     private final OnMarketActionListener listener;
     private boolean adminMode = false;
+    private boolean studentView = true;
+    private boolean unrestricted = false;
     private String currentUserId = null;
 
     public MarketAdapter(
@@ -38,8 +40,21 @@ public class MarketAdapter
         this.currentUserId = currentUserId;
     }
 
+    /** Redeem buttons only render for students. */
+    public void setStudentView(boolean studentView) {
+        this.studentView = studentView;
+    }
+
+    /** Admins manage every row regardless of ownership. */
+    public void setUnrestricted(boolean unrestricted) {
+        this.unrestricted = unrestricted;
+    }
+
     /** Same ownership rule as events: own items + owner-less. */
     private boolean canManage(MarketItem item) {
+        if (unrestricted) {
+            return true;
+        }
         if (!adminMode) {
             return false;
         }
@@ -95,9 +110,16 @@ public class MarketAdapter
             holder.btnRedeem.setEnabled(true);
         }
 
-        holder.btnRedeem.setOnClickListener(
-                v -> listener.onRedeem(item)
-        );
+        // Redeeming is students-only: organizers manage instead.
+        holder.btnRedeem.setVisibility(
+                studentView && !adminMode ? View.VISIBLE : View.GONE);
+        if (studentView && !adminMode) {
+            holder.btnRedeem.setOnClickListener(
+                    v -> listener.onRedeem(item)
+            );
+        } else {
+            holder.btnRedeem.setOnClickListener(null);
+        }
 
         boolean manageable = canManage(item);
         holder.layoutAdminActions.setVisibility(

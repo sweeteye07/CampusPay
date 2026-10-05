@@ -53,6 +53,17 @@ public class SendMoneyActivity extends AppCompatActivity {
         btnSendCredits = findViewById(R.id.btnSendCredits);
 
         btnSendCredits.setOnClickListener(v -> sendCredits());
+
+        // Vendors have no wallet actions.
+        if (mAuth.getCurrentUser() != null) {
+            RoleGate.fetchRole(db, mAuth.getCurrentUser().getUid(), role -> {
+                if (UserRole.isVendor(role)) {
+                    Toast.makeText(this, "Sending is not available for vendors",
+                            Toast.LENGTH_LONG).show();
+                    finish();
+                }
+            });
+        }
     }
 
     private void sendCredits() {

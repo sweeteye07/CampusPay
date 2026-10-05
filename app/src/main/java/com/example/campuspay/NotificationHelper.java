@@ -48,6 +48,9 @@ public final class NotificationHelper {
             String id,
             String name
     ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
         NotificationChannel channel = new NotificationChannel(
                 id, name, NotificationManager.IMPORTANCE_DEFAULT);
         manager.createNotificationChannel(channel);

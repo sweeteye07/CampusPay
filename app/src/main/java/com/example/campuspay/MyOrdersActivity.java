@@ -56,7 +56,27 @@ public class MyOrdersActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        loadOrders();
+        resolveRoleThenLoad();
+    }
+
+    /** My Orders is students-only. */
+    private void resolveRoleThenLoad() {
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "Please log in again",
+                    Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        RoleGate.fetchRole(db, mAuth.getCurrentUser().getUid(), role -> {
+            if (!UserRole.isStudent(role)) {
+                Toast.makeText(this, "My Orders is for students",
+                        Toast.LENGTH_LONG).show();
+                finish();
+                return;
+            }
+            loadOrders();
+        });
     }
 
     private void loadOrders() {

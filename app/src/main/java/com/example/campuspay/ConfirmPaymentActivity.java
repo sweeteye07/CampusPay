@@ -65,6 +65,15 @@ public class ConfirmPaymentActivity extends AppCompatActivity {
             return;
         }
 
+        // Vendors have no wallet actions.
+        RoleGate.fetchRole(db, senderId, role -> {
+            if (UserRole.isVendor(role)) {
+                Toast.makeText(this, "Sending is not available for vendors",
+                        Toast.LENGTH_LONG).show();
+                finish();
+            }
+        });
+
         ((TextView) findViewById(R.id.tvConfirmRecipientName)).setText(
                 recipientName != null && !recipientName.isEmpty()
                         ? recipientName : "Student");

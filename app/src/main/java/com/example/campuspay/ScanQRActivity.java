@@ -31,6 +31,7 @@ public class ScanQRActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
 
     private String organizerId;
+    private boolean isAdmin = false;
 
     private String eventId;
     private String eventTitle;
@@ -76,12 +77,14 @@ public class ScanQRActivity extends AppCompatActivity {
                     if (!UserRole.isOrganizer(userDoc.getString("role"))) {
                         Toast.makeText(
                                 this,
-                                "Only organizers can scan attendance",
+                                "Only staff can scan attendance",
                                 Toast.LENGTH_LONG
                         ).show();
                         finish();
                         return;
                     }
+
+                    isAdmin = UserRole.isAdmin(userDoc.getString("role"));
 
                     loadEvents();
                 })
@@ -113,9 +116,10 @@ public class ScanQRActivity extends AppCompatActivity {
 
                         String createdBy = doc.getString("createdBy");
 
-                        // Organizers can only reward their own events
-                        // (events added by hand in the console have no owner)
-                        if (createdBy != null
+                        // Staff can only reward their own events
+                        // (events added by hand in the console have no
+                        // owner); admins reward any event.
+                        if (!isAdmin && createdBy != null
                                 && !createdBy.equals(organizerId)) {
                             continue;
                         }

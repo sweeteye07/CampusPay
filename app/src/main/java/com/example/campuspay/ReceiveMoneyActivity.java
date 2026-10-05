@@ -28,6 +28,21 @@ public class ReceiveMoneyActivity extends AppCompatActivity {
         tvMyEmail = findViewById(R.id.tvMyEmail);
         MaterialButton btnCopyEmail = findViewById(R.id.btnCopyEmail);
 
+        // Vendors have no wallet actions.
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            RoleGate.fetchRole(
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance(),
+                    FirebaseAuth.getInstance().getCurrentUser().getUid(),
+                    role -> {
+                        if (UserRole.isVendor(role)) {
+                            Toast.makeText(this,
+                                    "Receiving is not available for vendors",
+                                    Toast.LENGTH_LONG).show();
+                            finish();
+                        }
+                    });
+        }
+
         String email = FirebaseAuth.getInstance().getCurrentUser() != null
                 && FirebaseAuth.getInstance().getCurrentUser().getEmail() != null
                 ? FirebaseAuth.getInstance().getCurrentUser().getEmail()

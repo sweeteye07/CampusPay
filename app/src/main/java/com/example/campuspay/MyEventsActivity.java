@@ -67,7 +67,7 @@ public class MyEventsActivity extends AppCompatActivity {
                 .document(mAuth.getCurrentUser().getUid())
                 .get()
                 .addOnSuccessListener(userDoc -> {
-                    if (UserRole.isOrganizer(userDoc.getString("role"))) {
+                    if (!UserRole.isStudent(userDoc.getString("role"))) {
                         Toast.makeText(this, "My Events is for students",
                                 Toast.LENGTH_LONG).show();
                         finish();

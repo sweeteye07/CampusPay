@@ -29,6 +29,7 @@ public class ScanPickupActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
 
     private String organizerId;
+    private boolean isAdmin = false;
 
     private final androidx.activity.result.ActivityResultLauncher<ScanOptions>
             qrLauncher = registerForActivityResult(
@@ -63,15 +64,19 @@ public class ScanPickupActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(userDoc -> {
 
-                    if (!UserRole.isOrganizer(userDoc.getString("role"))) {
+                    String role = userDoc.getString("role");
+                    if (!UserRole.isOrganizer(role)
+                            && !UserRole.isVendor(role)) {
                         Toast.makeText(
                                 this,
-                                "Only organizers can hand over orders",
+                                "Only staff and vendors can hand over orders",
                                 Toast.LENGTH_LONG
                         ).show();
                         finish();
                         return;
                     }
+
+                    isAdmin = UserRole.isAdmin(role);
 
                     startScan();
                 })
@@ -144,7 +149,7 @@ public class ScanPickupActivity extends AppCompatActivity {
                                     return;
                                 }
                                 String createdBy = itemDoc.getString("createdBy");
-                                if (createdBy != null
+                                if (!isAdmin && createdBy != null
                                         && !createdBy.equals(organizerId)) {
                                     showMessage("Only the item provider can hand over this order.");
                                     return;

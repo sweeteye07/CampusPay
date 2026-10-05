@@ -34,6 +34,7 @@ public class MarketplaceActivity extends AppCompatActivity
     private final List<MarketItem> allItems = new ArrayList<>();
 
     private boolean isOrganizer = false;
+    private boolean isStudent = true;
     private String currentUserId = null;
     private com.google.android.material.button.MaterialButton btnAddItem;
     private com.google.android.material.button.MaterialButton btnScanPickup;
@@ -107,12 +108,16 @@ public class MarketplaceActivity extends AppCompatActivity
                 .document(currentUserId)
                 .get()
                 .addOnSuccessListener(userDoc -> {
-                    isOrganizer = UserRole.isOrganizer(userDoc.getString("role"));
+                    String role = userDoc.getString("role");
+                    isOrganizer = UserRole.isOrganizer(role);
+                    isStudent = UserRole.isStudent(role);
                     adapter.setAdminMode(isOrganizer, currentUserId);
+                    adapter.setStudentView(isStudent);
+                    adapter.setUnrestricted(UserRole.isAdmin(role));
                     // Students get My Orders; providers get the highlighted
                     // List Item + Scan Pickup quick actions instead.
                     btnMyOrders.setVisibility(
-                            isOrganizer ? View.GONE : View.VISIBLE);
+                            isStudent ? View.VISIBLE : View.GONE);
                     layoutProviderActions.setVisibility(
                             isOrganizer ? View.VISIBLE : View.GONE);
                     loadItems();
@@ -120,7 +125,10 @@ public class MarketplaceActivity extends AppCompatActivity
                 .addOnFailureListener(e -> {
                     // Fail closed: student view if role can't be verified.
                     isOrganizer = false;
+                    isStudent = true;
                     adapter.setAdminMode(false, currentUserId);
+                    adapter.setStudentView(true);
+                    adapter.setUnrestricted(false);
                     btnMyOrders.setVisibility(View.VISIBLE);
                     layoutProviderActions.setVisibility(View.GONE);
                     loadItems();
@@ -251,6 +259,12 @@ public class MarketplaceActivity extends AppCompatActivity
 
     @Override
     public void onRedeem(MarketItem item) {
+        // Redeeming is students-only.
+        if (!isStudent) {
+            Toast.makeText(this, "Redeeming is for students",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (!item.isInStock()) {
             return;
         }
