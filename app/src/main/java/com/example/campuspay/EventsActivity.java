@@ -34,6 +34,7 @@ public class EventsActivity extends AppCompatActivity
     private final Set<String> registeredEventIds = new HashSet<>();
 
     private boolean isOrganizer = false;
+    private boolean isStudent = true;
     private String currentUserId = null;
     private com.google.android.material.button.MaterialButton btnCreateEventInline;
 
@@ -82,8 +83,12 @@ public class EventsActivity extends AppCompatActivity
                 .document(currentUserId)
                 .get()
                 .addOnSuccessListener(userDoc -> {
-                    isOrganizer = UserRole.isOrganizer(userDoc.getString("role"));
+                    String role = userDoc.getString("role");
+                    isOrganizer = UserRole.isOrganizer(role);
+                    isStudent = UserRole.isStudent(role);
                     adapter.setAdminMode(isOrganizer, currentUserId);
+                    adapter.setStudentView(isStudent);
+                    adapter.setUnrestricted(UserRole.isAdmin(role));
                     btnCreateEventInline.setVisibility(
                             isOrganizer ? View.VISIBLE : View.GONE);
                     loadEvents();
@@ -91,7 +96,10 @@ public class EventsActivity extends AppCompatActivity
                 .addOnFailureListener(e -> {
                     // Fail closed: student view if role can't be verified.
                     isOrganizer = false;
+                    isStudent = true;
                     adapter.setAdminMode(false, currentUserId);
+                    adapter.setStudentView(true);
+                    adapter.setUnrestricted(false);
                     btnCreateEventInline.setVisibility(View.GONE);
                     loadEvents();
                 });
@@ -172,7 +180,10 @@ public class EventsActivity extends AppCompatActivity
                                 deadline != null
                                         ? deadline.toDate().getTime() : null,
                                 document.getLong("capacity"),
-                                document.getLong("registeredCount")
+                                document.getLong("registeredCount"),
+                                document.getString("department"),
+                                document.getString("audienceTag"),
+                                document.getString("eligibilityNote")
                         );
 
                         event.setRegistered(
@@ -205,7 +216,7 @@ public class EventsActivity extends AppCompatActivity
         }
 
         // Registration is students-only.
-        if (isOrganizer) {
+        if (!isStudent) {
             Toast.makeText(this, "Registration is for students",
                     Toast.LENGTH_SHORT).show();
             return;
@@ -298,7 +309,8 @@ public class EventsActivity extends AppCompatActivity
                     event.setRegistered(true);
                     registeredEventIds.add(event.getId());
 
-                    adapter.notifyDataSetChanged();
+                    // Reload so the seat counter reflects the taken seat.
+                    loadEvents();
 
                     Toast.makeText(
                             this,

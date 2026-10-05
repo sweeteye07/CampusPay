@@ -22,6 +22,8 @@ public class EventAdapter
     private final List<Event> events;
     private final OnEventActionListener listener;
     private boolean adminMode = false;
+    private boolean studentView = true;
+    private boolean unrestricted = false;
     private String currentUserId = null;
 
     public EventAdapter(
@@ -38,8 +40,21 @@ public class EventAdapter
         this.currentUserId = currentUserId;
     }
 
+    /** Registration buttons only render for students. */
+    public void setStudentView(boolean studentView) {
+        this.studentView = studentView;
+    }
+
+    /** Admins manage every row regardless of ownership. */
+    public void setUnrestricted(boolean unrestricted) {
+        this.unrestricted = unrestricted;
+    }
+
     /** Same ownership rule as ScanQRActivity + rules: own events + owner-less. */
     private boolean canManage(Event event) {
+        if (unrestricted) {
+            return true;
+        }
         if (!adminMode) {
             return false;
         }
@@ -73,6 +88,8 @@ public class EventAdapter
         );
         holder.tvDate.setText(event.getDate());
 
+        bindAudience(holder, event);
+
         long now = System.currentTimeMillis();
         long deadline = event.getDeadlineMillis() != null
                 ? event.getDeadlineMillis() : -1L;
@@ -104,8 +121,8 @@ public class EventAdapter
 
         // Registration is students-only: organizers manage instead.
         holder.btnRegister.setVisibility(
-                adminMode ? View.GONE : View.VISIBLE);
-        if (!adminMode) {
+                studentView && !adminMode ? View.VISIBLE : View.GONE);
+        if (studentView && !adminMode) {
             if (event.isRegistered()) {
                 holder.btnRegister.setText("Registered");
                 holder.btnRegister.setEnabled(false);
@@ -140,6 +157,46 @@ public class EventAdapter
         }
     }
 
+    /** Department line, audience pill and eligibility note. */
+    private void bindAudience(EventViewHolder holder, Event event) {
+        String department = event.getDepartment();
+        if (department == null || department.isEmpty()) {
+            holder.tvDepartment.setVisibility(View.GONE);
+        } else {
+            holder.tvDepartment.setVisibility(View.VISIBLE);
+            holder.tvDepartment.setText("For: " + department);
+        }
+
+        String tag = event.getAudienceTag();
+        if (!EventAudience.isValidTag(tag)) {
+            holder.tvAudience.setVisibility(View.GONE);
+        } else {
+            holder.tvAudience.setVisibility(View.VISIBLE);
+            holder.tvAudience.setText(EventAudience.labelFor(tag));
+            if (EventAudience.TAG_MUST_JOIN.equals(tag)) {
+                holder.tvAudience.setBackgroundResource(
+                        R.drawable.bg_pill_danger);
+                holder.tvAudience.setTextColor(0xFFC62828);
+            } else if (EventAudience.TAG_HIGHLY_SUGGESTED.equals(tag)) {
+                holder.tvAudience.setBackgroundResource(
+                        R.drawable.bg_credits_pill);
+                holder.tvAudience.setTextColor(0xFFB45309);
+            } else {
+                holder.tvAudience.setBackgroundResource(
+                        R.drawable.bg_pill_success);
+                holder.tvAudience.setTextColor(0xFF2E7D32);
+            }
+        }
+
+        String note = event.getEligibilityNote();
+        if (note == null || note.isEmpty()) {
+            holder.tvEligibility.setVisibility(View.GONE);
+        } else {
+            holder.tvEligibility.setVisibility(View.VISIBLE);
+            holder.tvEligibility.setText(note);
+        }
+    }
+
     @Override
     public int getItemCount() {
         return events.size();
@@ -152,6 +209,9 @@ public class EventAdapter
         final TextView tvCredits;
         final TextView tvDate;
         final TextView tvMeta;
+        final TextView tvDepartment;
+        final TextView tvAudience;
+        final TextView tvEligibility;
         final com.google.android.material.button.MaterialButton btnRegister;
         final View layoutAdminActions;
         final com.google.android.material.button.MaterialButton btnEdit;
@@ -167,6 +227,9 @@ public class EventAdapter
             tvCredits = itemView.findViewById(R.id.tvEventItemCredits);
             tvDate = itemView.findViewById(R.id.tvEventItemDate);
             tvMeta = itemView.findViewById(R.id.tvEventItemMeta);
+            tvDepartment = itemView.findViewById(R.id.tvEventItemDepartment);
+            tvAudience = itemView.findViewById(R.id.tvEventItemAudience);
+            tvEligibility = itemView.findViewById(R.id.tvEventItemEligibility);
             btnRegister = itemView.findViewById(
                     R.id.btnEventItemRegister
             );

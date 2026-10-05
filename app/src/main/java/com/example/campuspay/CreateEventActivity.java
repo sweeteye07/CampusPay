@@ -25,6 +25,8 @@ public class CreateEventActivity extends AppCompatActivity {
     private TextInputLayout tilDate;
     private TextInputLayout tilDeadline;
     private TextInputLayout tilCapacity;
+    private TextInputLayout tilDepartment;
+    private TextInputLayout tilEligibility;
 
     private TextInputEditText etTitle;
     private TextInputEditText etDescription;
@@ -32,6 +34,9 @@ public class CreateEventActivity extends AppCompatActivity {
     private TextInputEditText etDate;
     private TextInputEditText etDeadline;
     private TextInputEditText etCapacity;
+    private TextInputEditText etEligibility;
+    private android.widget.AutoCompleteTextView actvDepartment;
+    private com.google.android.material.chip.ChipGroup chipGroupAudience;
 
     private MaterialButton btnPublish;
 
@@ -60,6 +65,8 @@ public class CreateEventActivity extends AppCompatActivity {
         tilDate = findViewById(R.id.tilEventDate);
         tilDeadline = findViewById(R.id.tilEventDeadline);
         tilCapacity = findViewById(R.id.tilEventCapacity);
+        tilDepartment = findViewById(R.id.tilEventDepartment);
+        tilEligibility = findViewById(R.id.tilEventEligibility);
 
         etTitle = findViewById(R.id.etEventTitle);
         etDescription = findViewById(R.id.etEventDescription);
@@ -67,6 +74,15 @@ public class CreateEventActivity extends AppCompatActivity {
         etDate = findViewById(R.id.etEventDate);
         etDeadline = findViewById(R.id.etEventDeadline);
         etCapacity = findViewById(R.id.etEventCapacity);
+        etEligibility = findViewById(R.id.etEventEligibility);
+        actvDepartment = findViewById(R.id.actvEventDepartment);
+        chipGroupAudience = findViewById(R.id.chipGroupAudience);
+
+        actvDepartment.setAdapter(new android.widget.ArrayAdapter<>(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                EventAudience.departments()));
+        actvDepartment.setText(EventAudience.DEPARTMENT_ALL, false);
 
         etDate.setOnClickListener(v -> showDateTimePicker(false));
         etDeadline.setOnClickListener(v -> showDateTimePicker(true));
@@ -123,6 +139,28 @@ public class CreateEventActivity extends AppCompatActivity {
                 now.get(java.util.Calendar.DAY_OF_MONTH)).show();
     }
 
+    /** Checks the chip matching the stored tag, defaulting to Open for All. */
+    private void checkAudienceChip(String tag) {
+        int checkedId = R.id.chipOpenForAll;
+        if (EventAudience.TAG_MUST_JOIN.equals(tag)) {
+            checkedId = R.id.chipMustJoin;
+        } else if (EventAudience.TAG_HIGHLY_SUGGESTED.equals(tag)) {
+            checkedId = R.id.chipHighlySuggested;
+        }
+        chipGroupAudience.check(checkedId);
+    }
+
+    private String selectedAudienceTag() {
+        int checkedId = chipGroupAudience.getCheckedChipId();
+        if (checkedId == R.id.chipMustJoin) {
+            return EventAudience.TAG_MUST_JOIN;
+        }
+        if (checkedId == R.id.chipHighlySuggested) {
+            return EventAudience.TAG_HIGHLY_SUGGESTED;
+        }
+        return EventAudience.TAG_OPEN_FOR_ALL;
+    }
+
     /** Pre-fill the form when opened from Manage Events. */
     private void loadEventForEdit(String eventId) {
         db.collection("events")
@@ -157,6 +195,14 @@ public class CreateEventActivity extends AppCompatActivity {
                     etCapacity.setText(capacity != null ? String.valueOf(capacity) : "");
                     Long count = doc.getLong("registeredCount");
                     editRegisteredCount = count != null ? count : 0;
+                    String department = doc.getString("department");
+                    actvDepartment.setText(
+                            department != null && !department.isEmpty()
+                                    ? department
+                                    : EventAudience.DEPARTMENT_ALL,
+                            false);
+                    checkAudienceChip(doc.getString("audienceTag"));
+                    etEligibility.setText(doc.getString("eligibilityNote"));
                     btnPublish.setEnabled(true);
                 })
                 .addOnFailureListener(e -> {
@@ -253,6 +299,30 @@ public class CreateEventActivity extends AppCompatActivity {
             return;
         }
 
+        String department = actvDepartment.getText() != null
+                ? actvDepartment.getText().toString().trim() : "";
+        if (!EventAudience.isValidDepartment(department)) {
+            tilDepartment.setError("Pick a department from the list");
+            return;
+        }
+        tilDepartment.setError(null);
+
+        String eligibility = etEligibility.getText() != null
+                ? etEligibility.getText().toString().trim() : "";
+        if (eligibility.isEmpty()) {
+            tilEligibility.setError(
+                    "Tell students who should opt in and who can't");
+            etEligibility.requestFocus();
+            return;
+        }
+        if (eligibility.length() > 500) {
+            tilEligibility.setError("Keep the note under 500 characters");
+            etEligibility.requestFocus();
+            return;
+        }
+
+        String audienceTag = selectedAudienceTag();
+
         boolean isEdit = editEventId != null && !editEventId.isEmpty();
 
         if (!isEdit && deadlineMillis <= System.currentTimeMillis()) {
@@ -270,7 +340,8 @@ public class CreateEventActivity extends AppCompatActivity {
 
         if (isEdit) {
             updateEvent(title, description, credits, date,
-                    deadlineMillis, capacity);
+                    deadlineMillis, capacity, department, audienceTag,
+                    eligibility);
             return;
         }
 
@@ -289,6 +360,9 @@ public class CreateEventActivity extends AppCompatActivity {
                         new java.util.Date(deadlineMillis)));
         event.put("capacity", capacity);
         event.put("registeredCount", 0L);
+        event.put("department", department);
+        event.put("audienceTag", audienceTag);
+        event.put("eligibilityNote", eligibility);
 
         db.collection("events")
                 .add(event)
@@ -311,7 +385,8 @@ public class CreateEventActivity extends AppCompatActivity {
 
     /** Update path for Manage Events -> Edit. Keeps createdBy/createdAt intact. */
     private void updateEvent(String title, String description, long credits,
-            String date, long deadlineMillis, long capacity) {
+            String date, long deadlineMillis, long capacity,
+            String department, String audienceTag, String eligibility) {
         btnPublish.setEnabled(false);
 
         Map<String, Object> updates = new HashMap<>();
@@ -323,6 +398,9 @@ public class CreateEventActivity extends AppCompatActivity {
                 new com.google.firebase.Timestamp(
                         new java.util.Date(deadlineMillis)));
         updates.put("capacity", capacity);
+        updates.put("department", department);
+        updates.put("audienceTag", audienceTag);
+        updates.put("eligibilityNote", eligibility);
         // Backfill the counter on legacy events edited for the first time.
         updates.put("registeredCount", editRegisteredCount);
 
