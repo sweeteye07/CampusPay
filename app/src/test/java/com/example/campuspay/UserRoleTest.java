@@ -47,4 +47,50 @@ public class UserRoleTest {
         assertFalse(UserRole.isOrganizer("admin2"));
         assertFalse(UserRole.isOrganizer("superadmin"));
     }
+
+    @Test
+    public void adminHasAllPowers() {
+        assertTrue(UserRole.isAdmin("admin"));
+        assertTrue(UserRole.isAdmin("Admin"));
+        assertTrue(UserRole.isOrganizer("admin"));
+        assertFalse(UserRole.isAdmin("staff"));
+        assertFalse(UserRole.isAdmin("organizer"));
+        assertFalse(UserRole.isAdmin("vendor"));
+        assertFalse(UserRole.isAdmin(null));
+    }
+
+    @Test
+    public void staffStringsAreStaffAndOrganizers() {
+        assertTrue(UserRole.isStaff("staff"));
+        assertTrue(UserRole.isStaff("organizer"));
+        assertTrue(UserRole.isOrganizer("staff"));
+        assertTrue(UserRole.isOrganizer("organizer"));
+        assertFalse(UserRole.isStaff("admin"));
+        assertFalse(UserRole.isStaff("vendor"));
+        assertFalse(UserRole.isStaff(null));
+    }
+
+    @Test
+    public void vendorIsOnlyVendor() {
+        assertTrue(UserRole.isVendor("vendor"));
+        assertTrue(UserRole.isVendor("Vendor"));
+        assertFalse(UserRole.isVendor("student"));
+        assertFalse(UserRole.isVendor("admin"));
+        assertFalse(UserRole.isVendor(null));
+        assertFalse(UserRole.isVendor(""));
+    }
+
+    @Test
+    public void vendorsAreNotOrganizers() {
+        assertFalse(UserRole.isOrganizer("vendor"));
+    }
+
+    @Test
+    public void onlyStudentsAreStudents() {
+        assertTrue(UserRole.isStudent("student"));
+        assertTrue(UserRole.isStudent(null));
+        assertFalse(UserRole.isStudent("admin"));
+        assertFalse(UserRole.isStudent("organizer"));
+        assertFalse(UserRole.isStudent("vendor"));
+    }
 }

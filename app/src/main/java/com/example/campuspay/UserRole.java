@@ -1,12 +1,16 @@
 package com.example.campuspay;
 
 /**
- * Shared role check used by the dashboard, the profile screen and the
- * attendance scanner, so a user is treated the same way everywhere.
+ * Shared role check used across the app so a user is treated the same
+ * way everywhere.
  *
- * An organizer is a user whose Firestore role field is "admin" or
- * "organizer" (compared case-insensitively). Students have role
- * "student" and can only show their own QR.
+ * Four roles exist:
+ * - student: send/receive credits, register for events, redeem rewards.
+ * - staff ("staff" or legacy "organizer"): everything a student does,
+ *   plus event/item management and QR scanning for their own listings.
+ * - vendor ("vendor"): shop counter — scan pickup QRs only.
+ * - admin ("admin"): all powers unlocked — every screen, every action,
+ *   ownership checks bypassed.
  */
 public final class UserRole {
 
@@ -14,13 +18,27 @@ public final class UserRole {
         // no instances
     }
 
+    public static boolean isAdmin(String role) {
+        return role != null && role.equalsIgnoreCase("admin");
+    }
+
+    public static boolean isStaff(String role) {
+        return role != null
+                && (role.equalsIgnoreCase("staff")
+                        || role.equalsIgnoreCase("organizer"));
+    }
+
+    /** Anyone with organizer powers: staff plus admins. */
     public static boolean isOrganizer(String role) {
+        return isAdmin(role) || isStaff(role);
+    }
 
-        if (role == null) {
-            return false;
-        }
+    public static boolean isVendor(String role) {
+        return role != null && role.equalsIgnoreCase("vendor");
+    }
 
-        return role.equalsIgnoreCase("admin")
-                || role.equalsIgnoreCase("organizer");
+    /** Students are everyone who is neither staff nor vendor. */
+    public static boolean isStudent(String role) {
+        return !isOrganizer(role) && !isVendor(role);
     }
 }
