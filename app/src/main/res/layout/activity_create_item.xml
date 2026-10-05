@@ -40,6 +40,31 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="15sp" />
 
+            <TextView
+                android:id="@+id/tvQuickAddLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Quick add"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <HorizontalScrollView
+                android:id="@+id/scrollQuickAdd"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:clipToPadding="false"
+                android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupQuickAdd"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true" />
+            </HorizontalScrollView>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilItemTitle"
                 style="@style/Widget.CampusPay.InputLayout"

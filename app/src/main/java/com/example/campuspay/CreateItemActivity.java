@@ -1,6 +1,7 @@
 package com.example.campuspay;
 
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -72,10 +73,41 @@ public class CreateItemActivity extends AppCompatActivity {
             toolbar.setTitle("Edit Item");
             btnPublish.setText("Save Changes");
             btnPublish.setEnabled(false);
+            // Presets are for new listings only.
+            findViewById(R.id.tvQuickAddLabel).setVisibility(View.GONE);
+            findViewById(R.id.scrollQuickAdd).setVisibility(View.GONE);
             loadItemForEdit(editItemId);
+        } else {
+            buildQuickAddChips();
         }
 
         btnPublish.setOnClickListener(v -> publishItem());
+    }
+
+    /** One tap pre-fills name, description and suggested price. */
+    private void buildQuickAddChips() {
+        com.google.android.material.chip.ChipGroup group =
+                findViewById(R.id.chipGroupQuickAdd);
+
+        for (MarketCatalog.Template preset : MarketCatalog.defaults()) {
+            com.google.android.material.chip.Chip chip =
+                    new com.google.android.material.chip.Chip(this);
+            chip.setText(preset.name);
+            chip.setCheckable(false);
+            chip.setClickable(true);
+            chip.setOnClickListener(v -> {
+                etTitle.setText(preset.name);
+                etDescription.setText(preset.description);
+                etPrice.setText(String.valueOf(preset.suggestedPrice));
+                tilTitle.setError(null);
+                tilDescription.setError(null);
+                tilPrice.setError(null);
+                Toast.makeText(this,
+                        preset.name + " filled in — set stock and publish",
+                        Toast.LENGTH_SHORT).show();
+            });
+            group.addView(chip);
+        }
     }
 
     /** Pre-fill the form when opened from the marketplace. */
