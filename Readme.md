@@ -106,7 +106,7 @@ Prevent duplicate registration
 
 View registered events
 
-Each event carries a registration deadline (day and time, picked from a date list then a 12-hour AM/PM time list) and a seat capacity set by the organizer (capacity 1-1000). The list shows "Closes <day, time>" and live "taken/capacity seats"; the Register button reads Full or Closed when the window shuts. Registration runs in one transaction that re-checks the deadline and seats, blocks duplicates, and takes one seat — the rules re-verify the deadline and the atomic seat counter in the same commit, so neither can be bypassed.
+Each event carries a registration deadline (day and time, picked from a date list then a 12-hour AM/PM time list), a seat capacity, a target department and an audience tag (Must Join / Highly Suggested / Open for All) plus an eligibility note telling students who should opt in and who can't — all shown on the event card and all validated server-side. The list shows "Closes <day, time>" and live "taken/capacity seats"; the Register button reads Full or Closed when the window shuts. Registration runs in one transaction that re-checks the deadline and seats, blocks duplicates, and takes one seat — the rules re-verify the deadline and the atomic seat counter in the same commit, so neither can be bypassed.
 
 Organizers (role = admin) additionally get a Create Event button on the dashboard, so events can be published from the app instead of the Firebase console.
 
@@ -172,7 +172,7 @@ Redeem a reward in one atomic Firestore transaction that debits the exact price,
 
 Open My Orders and show a personal pickup QR (CAMPUSPAY_PICKUP:<redemptionId>) for each pending order.
 
-An organizer taps Scan Pickup, scans the QR, confirms the buyer, and marks the order handed over (pending -> handed) in one transaction. Only the provider who listed the item can hand over its orders. Past orders are kept for records.
+An organizer taps Scan Pickup, scans the QR, confirms the buyer, and marks the order handed over (pending -> handed) in one transaction. Only the provider who listed the item can hand over its orders, except vendors (shop counters) who may hand over any order. Past orders are kept for records.
 
 The rules enforce, in short: item prices match at redeem time, stock and balance change atomically in the same commit, and only organizers can mark orders handed over. Deploy with:
 
@@ -395,9 +395,15 @@ The rules enforce, in short:
 
 Everything requires a signed-in user. Profiles are readable by any signed-in user so Send Credits can look a recipient up by email (that query must keep .limit(1)).
 
+Three roles exist. Everyone registers as a student; staff, vendors and admins are promoted by hand in the Firebase console (set the users/{uid} role field):
+- student: send/receive credits, register for events, redeem marketplace rewards.
+- staff (role staff or organizer): everything students do, plus event/item management and both QR scanners for their own listings.
+- vendor: shop counter — pickup QR scanning, handover of any order, and order history. No wallet actions, no P2P transfers.
+- admin: all powers unlocked — every screen, every action, ownership checks bypassed (any event, any item, any handover).
+
 Registration may only create your own profile with exactly name, email, role = student and credits = 0. Email and role are locked after creation; a student may change only their own display name, and nothing else.
 
-A balance can only change through three paths: your own debit when sending credits, an organizer award backed by a brand-new attendance record with a matching credit value in the same commit, and an incoming transfer matched by the sender's debit in the same commit.
+A balance can only change through three paths: your own debit when sending credits, an organizer award backed by a brand-new attendance record with a matching credit value in the same commit, and an incoming transfer matched by the sender's debit in the same commit. Vendors are excluded from transfers and awards server-side, and only role = student can redeem.
 
 Attendance records are created only by an organizer, only for a registered student, only once per event, and only for events that organizer created (console-created events without an owner can be rewarded by any organizer).
 

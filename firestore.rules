@@ -16,6 +16,25 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Staff covers admins plus organizer/staff roles: anyone allowed to
+    // manage events, items and attendance. Admin-only gates stay on
+    // isAdmin() for true super-powers.
+    function isStaff() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+             in ['admin', 'organizer', 'staff'];
+    }
+
+    function isVendor() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'vendor';
+    }
+
+    function isStudentRole() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
     function userBefore(uid) {
       return get(/databases/$(database)/documents/users/$(uid)).data;
     }
@@ -27,7 +46,9 @@ service cloud.firestore {
     function canRewardEvent(eid, credits) {
       let ev = get(/databases/$(database)/documents/events/$(eid)).data;
       return ev.credits == credits
-        && (!('createdBy' in ev) || ev.createdBy == request.auth.uid);
+        && (isAdmin()
+            || !('createdBy' in ev)
+            || ev.createdBy == request.auth.uid);
     }
 
     function eventDoc(eid) {
@@ -64,7 +85,7 @@ service cloud.firestore {
         let eid = request.resource.data.lastEventId;
         let att = /databases/$(database)/documents/attendance/$(uid + '_' + eid);
 
-        return isAdmin()
+        return isStaff()
           && request.auth.uid != uid
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['credits', 'lastEventId'])
@@ -132,10 +153,11 @@ service cloud.firestore {
     match /events/{eventId} {
       allow read: if signedIn();
 
-      allow create: if isAdmin()
+      allow create: if isStaff()
         && request.resource.data.keys().hasOnly(
              ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt',
-              'deadline', 'capacity', 'registeredCount'])
+              'deadline', 'capacity', 'registeredCount',
+              'department', 'audienceTag', 'eligibilityNote'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 100
@@ -151,19 +173,30 @@ service cloud.firestore {
         && request.resource.data.capacity is int
         && request.resource.data.capacity >= 1
         && request.resource.data.capacity <= 1000
-        && request.resource.data.registeredCount == 0;
+        && request.resource.data.registeredCount == 0
+        && request.resource.data.department is string
+        && request.resource.data.department.size() > 0
+        && request.resource.data.department.size() <= 60
+        && request.resource.data.audienceTag in
+             ['must_join', 'highly_suggested', 'open_for_all']
+        && request.resource.data.eligibilityNote is string
+        && request.resource.data.eligibilityNote.size() > 0
+        && request.resource.data.eligibilityNote.size() <= 500;
 
-      // Two update paths: the owning organizer edits listing fields
+      // Two update paths: the owning staff member edits listing fields
       // (createdBy/createdAt/registeredCount immutable, capacity can
       // never shrink below seats already taken), or a student atomically
       // takes one seat as part of a registration in the same commit.
+      // Admins may edit any event (unrestricted row in the app).
       allow update: if (
-        isAdmin()
-        && (!('createdBy' in resource.data)
-            || resource.data.createdBy == request.auth.uid)
+        (isAdmin()
+         || (isStaff()
+             && (!('createdBy' in resource.data)
+                 || resource.data.createdBy == request.auth.uid)))
         && request.resource.data.keys().hasOnly(
              ['title', 'description', 'credits', 'date', 'createdBy', 'createdAt',
-              'deadline', 'capacity', 'registeredCount'])
+              'deadline', 'capacity', 'registeredCount',
+              'department', 'audienceTag', 'eligibilityNote'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 100
@@ -178,6 +211,14 @@ service cloud.firestore {
         && request.resource.data.capacity is int
         && request.resource.data.capacity >= 1
         && request.resource.data.capacity <= 1000
+        && request.resource.data.department is string
+        && request.resource.data.department.size() > 0
+        && request.resource.data.department.size() <= 60
+        && request.resource.data.audienceTag in
+             ['must_join', 'highly_suggested', 'open_for_all']
+        && request.resource.data.eligibilityNote is string
+        && request.resource.data.eligibilityNote.size() > 0
+        && request.resource.data.eligibilityNote.size() <= 500
         && (!('registeredCount' in resource.data)
             || request.resource.data.registeredCount == resource.data.registeredCount)
         && (!('registeredCount' in resource.data)
@@ -191,11 +232,12 @@ service cloud.firestore {
             || request.resource.data.registeredCount <= resource.data.capacity)
       );
 
-      // Same ownership rule for deletes so one organizer
-      // cannot remove another organizer's event.
+      // Same ownership rule for deletes so one staff member
+      // cannot remove another's event; admins may delete anything.
       allow delete: if isAdmin()
-        && (!('createdBy' in resource.data)
-            || resource.data.createdBy == request.auth.uid);
+        || (isStaff()
+            && (!('createdBy' in resource.data)
+                || resource.data.createdBy == request.auth.uid));
     }
 
     match /registrations/{registrationId} {
@@ -215,7 +257,7 @@ service cloud.firestore {
         && registrationHonoursCapacity(request.resource.data.eventId);
 
       allow get: if signedIn()
-        && (registrationId.matches(request.auth.uid + '_.+') || isAdmin());
+        && (registrationId.matches(request.auth.uid + '_.+') || isStaff());
 
       allow list: if signedIn() && resource.data.userId == request.auth.uid;
 
@@ -223,7 +265,7 @@ service cloud.firestore {
     }
     match /attendance/{attendanceId} {
 
-      allow create: if isAdmin()
+      allow create: if isStaff()
         && request.resource.data.keys().hasOnly(
              ['userId', 'eventId', 'eventTitle', 'creditsAwarded', 'awardedBy', 'attendedAt'])
         && request.resource.data.keys().hasAll(
@@ -238,7 +280,7 @@ service cloud.firestore {
         && request.resource.data.attendedAt == request.time;
 
       allow get: if signedIn()
-        && (attendanceId.matches(request.auth.uid + '_.+') || isAdmin());
+        && (attendanceId.matches(request.auth.uid + '_.+') || isStaff());
 
       allow list: if signedIn() && resource.data.userId == request.auth.uid;
 
@@ -248,7 +290,7 @@ service cloud.firestore {
     match /market_items/{itemId} {
       allow read: if signedIn();
 
-      allow create: if isAdmin()
+      allow create: if isStaff()
         && request.resource.data.keys().hasOnly(
              ['title', 'description', 'price', 'stock', 'active', 'createdBy', 'createdAt'])
         && request.resource.data.title is string
@@ -265,13 +307,15 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt == request.time;
 
-      // Two update paths: the owning organizer edits listing fields
+      // Two update paths: the owning staff member edits listing fields
       // (createdBy/createdAt immutable), or a buyer atomically holds
       // one unit of stock as part of a redemption in the same commit.
+      // Admins may edit any item.
       allow update: if (
-        isAdmin()
-        && (!('createdBy' in resource.data)
-            || resource.data.createdBy == request.auth.uid)
+        (isAdmin()
+         || (isStaff()
+             && (!('createdBy' in resource.data)
+                 || resource.data.createdBy == request.auth.uid)))
         && request.resource.data.keys().hasOnly(
              ['title', 'description', 'price', 'stock', 'active', 'createdBy', 'createdAt'])
         && request.resource.data.title is string
@@ -296,17 +340,20 @@ service cloud.firestore {
       );
 
       allow delete: if isAdmin()
-        && (!('createdBy' in resource.data)
-            || resource.data.createdBy == request.auth.uid);
+        || (isStaff()
+            && (!('createdBy' in resource.data)
+                || resource.data.createdBy == request.auth.uid));
     }
 
     match /redemptions/{redemptionId} {
 
-      // A student redeems one unit: the same commit must debit the
-      // exact price from their balance and hold one unit of stock
-      // (both verified below with getAfter), plus a matching spend
-      // ledger entry (verified by isSpendEntry in the same commit).
+      // A student redeems one unit: only role 'student' may redeem,
+      // and the same commit must debit the exact price from their
+      // balance and hold one unit of stock (both verified below with
+      // getAfter), plus a matching spend ledger entry (verified by
+      // isSpendEntry in the same commit).
       allow create: if signedIn()
+        && isStudentRole()
         && request.resource.data.keys().hasOnly(
              ['userId', 'itemId', 'itemTitle', 'price', 'status', 'redeemedAt'])
         && request.resource.data.userId == request.auth.uid
@@ -326,14 +373,18 @@ service cloud.firestore {
              == userBefore(request.auth.uid).credits - request.resource.data.price;
 
       allow get: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
+        && (resource.data.userId == request.auth.uid || isStaff() || isVendor());
 
-      allow list: if signedIn() && resource.data.userId == request.auth.uid;
+      // Owners see their own orders; staff and vendors list for
+      // pickup queues and handover history.
+      allow list: if signedIn()
+        && (resource.data.userId == request.auth.uid || isStaff() || isVendor());
 
-      // Organizer handover: pending -> handed only, stamped in-commit,
-      // and only by the marketplace service provider who listed the
-      // item (owner-less items may be handed over by any organizer).
-      allow update: if isAdmin()
+      // Handover: pending -> handed only, stamped in-commit.
+      // Vendors (shop counters) may hand over any order; staff may
+      // only hand over orders for items they listed themselves
+      // (owner-less items: any organizer).
+      allow update: if signedIn()
         && request.resource.data.keys().hasOnly(
              ['userId', 'itemId', 'itemTitle', 'price', 'status',
               'redeemedAt', 'handedAt', 'handedBy'])
@@ -347,11 +398,12 @@ service cloud.firestore {
         && request.resource.data.price == resource.data.price
         && request.resource.data.handedBy == request.auth.uid
         && request.resource.data.handedAt == request.time
-        && (
-             !('createdBy' in get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data)
-             || get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.createdBy
-                  == request.auth.uid
-           );
+        && (isVendor()
+            || isAdmin()
+            || (isStaff()
+                && (!('createdBy' in get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data)
+                    || get(/databases/$(database)/documents/market_items/$(request.resource.data.itemId)).data.createdBy
+                         == request.auth.uid)));
 
       allow delete: if false;
     }
@@ -368,7 +420,8 @@ service cloud.firestore {
           && d.userId is string
           && d.eventId is string
           && d.userId != request.auth.uid
-          && isAdmin()
+          && isStaff()
+          && get(/databases/$(database)/documents/users/$(d.userId)).data.role == 'student'
           && !exists(att)
           && getAfter(att).data.creditsAwarded == d.credits
           && getAfter(att).data.awardedBy == request.auth.uid;
@@ -382,6 +435,7 @@ service cloud.firestore {
           && d.keys().hasOnly(
                ['type', 'direction', 'userId', 'counterpartyEmail', 'credits', 'description', 'createdAt'])
           && d.userId == request.auth.uid
+          && !isVendor()
           && userAfter(request.auth.uid).credits
                == userBefore(request.auth.uid).credits - d.credits;
       }
@@ -394,6 +448,7 @@ service cloud.firestore {
           && d.keys().hasOnly(
                ['type', 'direction', 'userId', 'counterpartyEmail', 'credits', 'description', 'createdAt'])
           && d.userId != request.auth.uid
+          && get(/databases/$(database)/documents/users/$(d.userId)).data.role != 'vendor'
           && userAfter(d.userId).credits
                == userBefore(d.userId).credits + d.credits;
       }
