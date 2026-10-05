@@ -24,9 +24,22 @@ public class HistoryAdapter
 
     private final List<CreditTransaction> allItems = new ArrayList<>();
     private final List<CreditTransaction> visibleItems = new ArrayList<>();
+    private final java.util.Map<String, String> counterpartyNames =
+            new java.util.HashMap<>();
+    private final OnHistoryClickListener clickListener;
     private int filter = FILTER_ALL;
 
+    public interface OnHistoryClickListener {
+        void onHistoryClick(CreditTransaction item);
+    }
+
     public HistoryAdapter(List<CreditTransaction> items) {
+        this(items, null);
+    }
+
+    public HistoryAdapter(List<CreditTransaction> items,
+            OnHistoryClickListener clickListener) {
+        this.clickListener = clickListener;
         setItems(items);
     }
 
@@ -41,6 +54,28 @@ public class HistoryAdapter
     public void setFilter(int filter) {
         this.filter = filter;
         applyFilter();
+    }
+
+    /** Resolved display names keyed by counterparty email. */
+    public void setCounterpartyNames(java.util.Map<String, String> names) {
+        counterpartyNames.clear();
+        if (names != null) {
+            counterpartyNames.putAll(names);
+        }
+        notifyDataSetChanged();
+    }
+
+    /** Display name for a transfer counterparty, never an email. */
+    public String displayName(CreditTransaction item) {
+        String email = item.getCounterpartyEmail();
+        if (email != null && counterpartyNames.containsKey(email)) {
+            return counterpartyNames.get(email);
+        }
+        if (email != null && !email.isEmpty()) {
+            int at = email.indexOf('@');
+            return at > 0 ? email.substring(0, at) : email;
+        }
+        return "Student";
     }
 
     private void applyFilter() {
@@ -87,23 +122,24 @@ public class HistoryAdapter
     ) {
         CreditTransaction item = visibleItems.get(position);
 
-        String description = item.getDescription();
+        String description;
 
-        if (description == null || description.isEmpty()) {
-            if (item.isEarn() && item.getEventTitle() != null) {
-                description = "Earned for " + item.getEventTitle();
-            } else if (item.isSpend() && item.getItemTitle() != null) {
-                description = "Redeemed " + item.getItemTitle();
-            } else if (item.isSend()) {
-                String to = item.getCounterpartyEmail() != null
-                        ? item.getCounterpartyEmail() : "student";
-                description = "Sent to " + to;
-            } else if (item.isReceive()) {
-                String from = item.getCounterpartyEmail() != null
-                        ? item.getCounterpartyEmail() : "student";
-                description = "Received from " + from;
-            } else {
-                description = "Credit transaction";
+        // Transfers always render the counterparty name — never an email.
+        if (item.isSend()) {
+            description = "Sent to " + displayName(item);
+        } else if (item.isReceive()) {
+            description = "Received from " + displayName(item);
+        } else {
+            description = item.getDescription();
+
+            if (description == null || description.isEmpty()) {
+                if (item.isEarn() && item.getEventTitle() != null) {
+                    description = "Earned for " + item.getEventTitle();
+                } else if (item.isSpend() && item.getItemTitle() != null) {
+                    description = "Redeemed " + item.getItemTitle();
+                } else {
+                    description = "Credit transaction";
+                }
             }
         }
 
@@ -133,6 +169,12 @@ public class HistoryAdapter
         }
 
         bindTypeBadge(holder, item);
+
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) {
+                clickListener.onHistoryClick(item);
+            }
+        });
     }
 
     /** Colored icon + pill per transaction type. */
